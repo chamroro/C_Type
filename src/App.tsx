@@ -1,5 +1,14 @@
 import React, { useState, useEffect, useRef, createRef, RefObject } from 'react';
 import styled, { createGlobalStyle } from 'styled-components';
+import poems from './data/poems';
+import { AuthProvider } from './contexts/AuthContext';
+import Login from './components/Auth/Login';
+import Signup from './components/Auth/Signup';
+import Navigation from './components/Navigation';
+import PoetryTyping from './components/PoetryTyping';
+import AdminPoems from './components/Admin/AdminPoems';
+import { collection, getDocs } from 'firebase/firestore';
+import { db } from './firebase/config';
 
 // 글꼴 추가
 const GlobalStyle = createGlobalStyle`
@@ -20,7 +29,7 @@ const GlobalStyle = createGlobalStyle`
   }
 
   @font-face {
-    font-family: 'intelone-mono-font-family-italic';
+    font-family: 'IntelOneMono';
     src: url('https://fastly.jsdelivr.net/gh/projectnoonnu/noonfonts_2307-1@1.1/intelone-mono-font-family-italic.woff2') format('woff2');
     font-weight: 400;
     font-style: normal;
@@ -46,16 +55,26 @@ const GlobalStyle = createGlobalStyle`
     font-weight: normal;
     font-style: normal;
   }
+  
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&display=swap');
+  
+  body {
+    margin: 0;
+    padding: 0;
+    font-family: 'Noto Sans KR', sans-serif;
+    background-color:rgb(255, 255, 255);
+  }
 `;
 
 const AppContainer = styled.div`
-  max-width: 800px;
+  font-family: 'Noto Sans KR', sans-serif;
+  max-width: 1200px;
   margin: 0 auto;
-  padding: 2rem;
-  text-align: center;
-  background-color: rgb(255, 255, 255);
-  min-height: 100vh;
-  color: #000;
+  padding: 0 1rem;
+`;
+
+const MainContent = styled.main`
+  padding: 2rem 0;
 `;
 
 const Title = styled.h1`
@@ -66,7 +85,7 @@ const Title = styled.h1`
 const FontSelectorContainer = styled.div`
   display: flex;
   justify-content: center;
-  margin-bottom: 2rem;
+  margin-bottom: 1rem;
   flex-wrap: wrap;
   gap: 10px;
 `;
@@ -94,8 +113,8 @@ const FontChip = styled.button<{ isSelected: boolean }>`
     font-family: 'MaruBuri', serif;
   }
   
-  &.intelone-mono-font-family-italic {
-    font-family: 'intelone-mono-font-family-italic', monospace;
+  &.IntelOneMono {
+    font-family: 'IntelOneMono', monospace;
   }
   
   &.Shilla_CultureB-Bold {
@@ -108,6 +127,43 @@ const FontChip = styled.button<{ isSelected: boolean }>`
   
   &.MapoFlowerIsland {
     font-family: 'MapoFlowerIsland', serif;
+  }
+`;
+
+const RefreshButton = styled.button`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 16px;
+  margin: 0 auto 1.5rem;
+  border-radius: 50px;
+  background-color: #f0f0f0;
+  color: #333;
+  border: 1px solid #ddd;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: all 0.2s ease;
+  
+  &:hover {
+    background-color: #e0e0e0;
+  }
+  
+  svg {
+    margin-right: 8px;
+  }
+`;
+
+const PoemInfo = styled.div`
+  margin-bottom: 1.5rem;
+  
+  h2 {
+    font-size: 1.4rem;
+    margin-bottom: 0.3rem;
+  }
+  
+  p {
+    font-size: 1rem;
+    color: #666;
   }
 `;
 
@@ -170,7 +226,7 @@ const Char = styled.span<{ status: 'correct' | 'incorrect' | 'waiting' | 'compos
       case 'correct': return 'black';
       case 'incorrect': return '#ff4444';
       case 'waiting': return 'transparent';
-      case 'composing': return 'black'; // 조합 중인 글자는 연한 녹색
+      case 'composing': return 'black'; // 조합 중인 글자는 검정색으로
     }
   }};
 `;
@@ -209,271 +265,111 @@ const CompletionMessage = styled.div<{ show: boolean }>`
 const fontOptions = [
   { id: 'BookkMyungjo-Bd', name: '부크크 명조' },
   { id: 'MaruBuri', name: '마루부리' },
-  { id: 'intelone-mono-font-family-italic', name: 'Intel One Mono' },
+  { id: 'IntelOneMono', name: 'Intel One Mono' },
   { id: 'Shilla_CultureB-Bold', name: '신라문화체' },
   { id: 'YESMyoungjo-Regular', name: '예스 명조' },
   { id: 'MapoFlowerIsland', name: '마포꽃섬' }
 ];
 
-const poems = [
-  {
-    title: '대화',
-    content: `사랑을 잃고 나는 쓰네
-잘 있거라, 짧았던 밤들아
-창밖을 떠돌던 겨울 안개들아
-아무것도 모르던 촛불들아, 잘 있거라
-공포를 기다리던 흰 종이들아
-말설임을 대신하던 눈물들아
-잘 있거라, 더 이상 내 것이 아닌 열망들아
-장님처럼 나 이제 더듬거리며 문을 잠그네
-가엾은 내 사랑 빈집에 갇혔네`,
-  }
-];
-
-// 한글 유니코드 범위 체크
-const isKorean = (char: string) => {
-  const code = char.charCodeAt(0);
-  return code >= 0xAC00 && code <= 0xD7A3;
-};
-
-// 초성 검사
-const isChoseong = (char: string) => {
-  const code = char.charCodeAt(0);
-  return code >= 0x3131 && code <= 0x314E;
-};
-
-// 중성 검사
-const isJungseong = (char: string) => {
-  const code = char.charCodeAt(0);
-  return code >= 0x314F && code <= 0x3163;
-};
+// 새로고침 아이콘 컴포넌트
+const RefreshIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M13.65 2.35C12.2 0.9 10.21 0 8 0C3.58 0 0 3.58 0 8C0 12.42 3.58 16 8 16C11.73 16 14.84 13.45 15.73 10H13.65C12.83 12.33 10.61 14 8 14C4.69 14 2 11.31 2 8C2 4.69 4.69 2 8 2C9.66 2 11.14 2.69 12.22 3.78L9 7H16V0L13.65 2.35Z" fill="#333"/>
+  </svg>
+);
 
 const App: React.FC = () => {
-  const currentPoem = poems[0];
-  const poemLines = currentPoem.content.split('\n');
-  
-  // 각 줄별 상태 관리
-  const [lineInputs, setLineInputs] = useState<string[]>(Array(poemLines.length).fill(''));
-  const [activeLineIndex, setActiveLineIndex] = useState(0);
-  const [completed, setCompleted] = useState(false);
-  const [composingLine, setComposingLine] = useState<number | null>(null);
-  // 선택된 폰트 상태 추가
-  const [selectedFont, setSelectedFont] = useState(fontOptions[0].id);
-  
-  // 각 줄의 입력 필드에 대한 ref 생성
-  const lineRefs = useRef<RefObject<HTMLInputElement>[]>(
-    Array(poemLines.length).fill(null).map(() => createRef<HTMLInputElement>())
-  );
-  
-  // 진행 상황 계산
-  const calculateProgress = () => {
-    let correctChars = 0;
-    let totalChars = 0;
-    
-    poemLines.forEach((line, index) => {
-      const input = lineInputs[index] || '';
-      for (let i = 0; i < Math.min(line.length, input.length); i++) {
-        if (line[i] === input[i]) {
-          correctChars++;
-        }
-      }
-      totalChars += line.length;
-    });
-    
-    return (correctChars / totalChars) * 100;
-  };
-  
-  // 줄 입력 처리
-  const handleLineInput = (index: number, value: string) => {
-    const newLineInputs = [...lineInputs];
-    newLineInputs[index] = value;
-    setLineInputs(newLineInputs);
-    
-    // 현재 줄이 완성되었는지 확인
-    const currentLine = poemLines[index];
-    if (value === currentLine && index < poemLines.length - 1) {
-      // 다음 줄로 자동 이동 (약간의 지연 추가)
-      setTimeout(() => {
-        setActiveLineIndex(index + 1);
-        lineRefs.current[index + 1].current?.focus();
-      }, 100);
-    }
-    
-    // 전체 완성 여부 확인
-    checkCompletion(newLineInputs);
-  };
-  
-  // 키 이벤트 처리
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>, index: number) => {
-    // 엔터키 처리
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      
-      // 마지막 줄이 아니면 다음 줄로 이동
-      if (index < poemLines.length - 1) {
-        setActiveLineIndex(index + 1);
-        lineRefs.current[index + 1].current?.focus();
-      }
-    }
-    // 백스페이스 처리 - 현재 줄의 맨 앞에서 누르면 이전 줄로 이동
-    else if (e.key === 'Backspace' && index > 0) {
-      const cursorPosition = e.currentTarget.selectionStart;
-      if (cursorPosition === 0) {
-        e.preventDefault(); // 기본 백스페이스 동작 방지
-        
-        // 이전 줄로 이동
-        const prevIndex = index - 1;
-        setActiveLineIndex(prevIndex);
-        
-        // 이전 줄의 입력 필드에 포커스, 커서를 이전 줄의 텍스트 끝으로 이동
-        setTimeout(() => {
-          const prevInput = lineRefs.current[prevIndex].current;
-          if (prevInput) {
-            prevInput.focus();
-            const prevText = lineInputs[prevIndex] || '';
-            prevInput.selectionStart = prevText.length;
-            prevInput.selectionEnd = prevText.length;
-          }
-        }, 0);
-      }
-    }
-    // 위 화살표 처리
-    else if (e.key === 'ArrowUp' && index > 0) {
-      e.preventDefault();
-      setActiveLineIndex(index - 1);
-      lineRefs.current[index - 1].current?.focus();
-    }
-    // 아래 화살표 처리
-    else if (e.key === 'ArrowDown' && index < poemLines.length - 1) {
-      e.preventDefault();
-      setActiveLineIndex(index + 1);
-      lineRefs.current[index + 1].current?.focus();
-    }
-  };
-  
-  // 조합 이벤트 처리
-  const handleCompositionStart = (index: number) => {
-    setComposingLine(index);
-  };
-  
-  const handleCompositionEnd = () => {
-    setComposingLine(null);
-  };
-  
-  // 완성 여부 확인
-  const checkCompletion = (inputs: string[]) => {
-    if (inputs.length !== poemLines.length) return false;
-    
-    const allComplete = poemLines.every((line, i) => line === inputs[i]);
-    setCompleted(allComplete);
-    return allComplete;
-  };
-  
-  // 폰트 변경 핸들러
-  const handleFontChange = (fontId: string) => {
-    setSelectedFont(fontId);
-  };
-  
-  // 줄 렌더링
-  const renderLine = (line: string, index: number) => {
-    const input = lineInputs[index] || '';
-    const isActive = index === activeLineIndex;
-    const isComposing = index === composingLine;
-    
-    // 각 글자 렌더링
-    const chars = line.split('').map((char, i) => {
-      // 입력된 글자가 있는 경우
-      if (i < input.length) {
-        // 조합 중이고 마지막 글자일 경우
-        if (isComposing && i === input.length - 1) {
-          return (
-            <Char key={i} status="composing">
-              {input[i]}
-            </Char>
-          );
-        }
-        
-        // 일치 여부에 따라 스타일 결정
-        const status = char === input[i] ? 'correct' : 'incorrect';
-        return (
-          <Char key={i} status={status}>
-            {input[i]}
-          </Char>
-        );
-      }
-      
-      // 입력되지 않은 글자는 기다림 상태
-      return (
-        <Char key={i} status="waiting">
-          {char}
-        </Char>
-      );
-    });
-    
-    return (
-      <LineContainer key={index}>
-        <BaseLine fontFamily={selectedFont}>{line}</BaseLine>
-        <InputLine
-          ref={lineRefs.current[index]}
-          value={input}
-          onChange={(e) => handleLineInput(index, e.target.value)}
-          onKeyDown={(e) => handleKeyDown(e, index)}
-          onCompositionStart={() => handleCompositionStart(index)}
-          onCompositionEnd={handleCompositionEnd}
-          disabled={!isActive}
-          autoFocus={isActive && index === 0}
-          spellCheck={false}
-          autoComplete="off"
-          data-line-index={index}
-          fontFamily={selectedFont}
-        />
-        <OverlayLine fontFamily={selectedFont}>{chars}</OverlayLine>
-      </LineContainer>
-    );
-  };
-  
-  // 초기 포커스 설정
+  // 현재 경로 상태 관리
+  const [path, setPath] = useState(window.location.pathname);
+  const [isInitialized, setIsInitialized] = useState(false);
+  const [poemsLoaded, setPoemsLoaded] = useState(false);
+
+  // 경로 변경 이벤트 리스너
   useEffect(() => {
-    lineRefs.current[activeLineIndex].current?.focus();
-  }, [activeLineIndex]);
-  
-  const progress = calculateProgress();
-  
+    const handlePathChange = () => {
+      setPath(window.location.pathname);
+    };
+
+    window.addEventListener('popstate', handlePathChange);
+
+    // 컴포넌트 언마운트 시 리스너 제거
+    return () => {
+      window.removeEventListener('popstate', handlePathChange);
+    };
+  }, []);
+
+  // 앱 초기화 시 시 데이터 확인 및 로드
+  useEffect(() => {
+    const checkPoems = async () => {
+      if (isInitialized) return;
+      
+      try {
+        // 파이어스토어에 시 데이터가 있는지 확인
+        const poemsCollection = collection(db, 'poems');
+        const snapshot = await getDocs(poemsCollection);
+        
+        if (snapshot.empty) {
+          console.log('파이어스토어에 시 데이터가 없습니다. 로컬 데이터를 업로드합니다.');
+          // 로컬 시 데이터 로드
+          const poemsModule = await import('./data/poems');
+          const uploadToFirestore = poemsModule.uploadPoemsToFirestore;
+          
+          if (typeof uploadToFirestore === 'function') {
+            await uploadToFirestore();
+            console.log('로컬 시 데이터가 성공적으로 업로드되었습니다.');
+          }
+        } else {
+          console.log(`파이어스토어에 ${snapshot.size}개의 시 데이터가 있습니다.`);
+        }
+        
+        setPoemsLoaded(true);
+      } catch (error) {
+        console.error('시 데이터 확인 중 오류:', error);
+      } finally {
+        setIsInitialized(true);
+      }
+    };
+    
+    checkPoems();
+  }, [isInitialized]);
+
+  // 렌더링할 컴포넌트 결정
+  let content;
+  switch (path) {
+    case '/login':
+      content = <Login />;
+      break;
+    case '/signup':
+      content = <Signup />;
+      break;
+    case '/poetry-typing':
+      content = <PoetryTyping />;
+      break;
+    case '/admin':
+      content = <AdminPoems />;
+      break;
+    default:
+      content = <PoetryTyping />;
+      break;
+  }
+
   return (
-    <>
+    <AuthProvider>
       <GlobalStyle />
       <AppContainer>
-        <Title>시로(詩路)</Title>
-        
-        {/* 폰트 선택 UI */}
-        <FontSelectorContainer>
-          {fontOptions.map(font => (
-            <FontChip 
-              key={font.id}
-              isSelected={selectedFont === font.id}
-              onClick={() => handleFontChange(font.id)}
-              className={font.id}
-            >
-              {font.name}
-            </FontChip>
-          ))}
-        </FontSelectorContainer>
-        
-        <ProgressBar>
-          <Progress width={progress} />
-        </ProgressBar>
-        <TypingArea>
-          <TextContainer fontFamily={selectedFont}>
-            {poemLines.map((line, i) => renderLine(line, i))}
-          </TextContainer>
-        </TypingArea>
-        <CompletionMessage show={completed}>
-          <h2>🎉 축하합니다! 🎉</h2>
-          <p>성공적으로 시를 완성하셨습니다!</p>
-        </CompletionMessage>
+        <Navigation />
+        <MainContent>
+          {!isInitialized ? (
+            <div style={{ textAlign: 'center', padding: '2rem' }}>
+              데이터를 불러오는 중입니다...
+            </div>
+          ) : (
+            content
+          )}
+        </MainContent>
       </AppContainer>
-    </>
+    </AuthProvider>
   );
-};
+}
 
 export default App; 
