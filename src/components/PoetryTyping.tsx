@@ -5,6 +5,8 @@ import { addCompletedPoem } from '../firebase/auth';
 import { saveCompletedPoem, getCompletedUserIds } from '../firebase/poems';
 import { useAuth } from '../contexts/AuthContext';
 import { collection, getDocs, query, where, getDoc, doc } from 'firebase/firestore';
+import { useContext } from 'react';
+import AuthContext from '../contexts/AuthContext';
 
 // 시 인터페이스 정의 (poems.ts의 인터페이스와 일치하도록)
 interface Poem {
@@ -504,6 +506,7 @@ const PoetryTyping: React.FC = () => {
   const [showAllCompletedToast, setShowAllCompletedToast] = useState(false);
   const [isUsersOpen, setIsUsersOpen] = useState(false);
   const [comment, setComment] = useState('');
+  const [isCompleted, setIsCompleted] = useState(false);
 
   // 시 목록 가져오기
   useEffect(() => {
@@ -546,7 +549,7 @@ const PoetryTyping: React.FC = () => {
   // 모든 줄이 정확히 입력되었는지 확인하고 축하 메시지 표시
   useEffect(() => {
     console.log('라인 입력 상태:', lineInputs);
-    if (!currentPoem || showCompletion) return;
+    if (!currentPoem || showCompletion || isCompleted) return;
   
     const meaningfulLines = poemLines
       .map((line, i) => ({ line: line.trim(), input: (lineInputs[i] || '').trim() }))
@@ -563,7 +566,7 @@ const PoetryTyping: React.FC = () => {
       console.log('모든 줄이 정확히 입력됨, 완료 처리 시작');
       handleCompletion();
     }
-  }, [lineInputs, poemLines, currentPoem, showCompletion]);
+  }, [lineInputs, poemLines, currentPoem, showCompletion, isCompleted]);
   
   // 라인 입력 핸들러
   const handleLineInput = (index: number, value: string) => {
@@ -839,18 +842,17 @@ const PoetryTyping: React.FC = () => {
 
   // 완료 처리 함수
   const handleCompletion = async () => {
-    if (showCompletion) return;
+    if (showCompletion || isCompleted) return;
     
     console.log('완료 처리 중...');
     setShowCompletion(true);
+    setIsCompleted(true);
     setProgress(100);
   
     if (!currentPoem || !currentUser) return;
     
     try {
       await addCompletedPoem(currentUser.uid, currentPoem.id);
-      
-      
     } catch (error) {
       console.error('시 완료 저장 중 오류 발생:', error);
     }
@@ -915,7 +917,6 @@ const PoetryTyping: React.FC = () => {
 
       await saveCompletedPoem(currentUser.uid, currentPoem.id, comment);
 
-      
       setCurrentPoem(prev => {
         if (!prev) return null;
         return {
@@ -924,8 +925,9 @@ const PoetryTyping: React.FC = () => {
         };
       });
 
-      setShowCompletion(false);
       setComment(''); // 댓글 초기화
+      setShowCompletion(false); // 토스트 메시지 숨기기
+      console.log('토스트바 숨김 처리 완료');
     } catch (error) {
       console.error('댓글 저장 중 오류 발생:', error);
     }
@@ -952,7 +954,13 @@ const PoetryTyping: React.FC = () => {
 
     setShowCompletion(false);
     setComment(''); // 댓글 초기화
+    console.log('토스트바 숨김 처리 완료');
   };
+
+  // showCompletion 상태 변화 추적
+  useEffect(() => {
+    console.log('showCompletion 상태:', showCompletion);
+  }, [showCompletion]);
 
   return (
     <Container>
@@ -965,12 +973,22 @@ const PoetryTyping: React.FC = () => {
       {showCompletion && (
         <ToastMessage show={true}>
           시를 완성했어요! 🎉
-          <span>한줄평을 남길 수 있어요!</span>
-          <CommentTextarea value={comment} onChange={handleCommentChange} placeholder="한줄평을 입력하세요..." />
-          <ButtonContainer>
-            <Button onClick={handleOkayClick} disabled={comment.trim() !== ''}>괜찮아요</Button>
-            <Button onClick={handleCommentSubmit}>등록</Button>
-          </ButtonContainer>
+          {currentUser ? (
+            <>
+              <span>한줄평을 남길 수 있어요!</span>
+              <CommentTextarea 
+                value={comment} 
+                onChange={handleCommentChange} 
+                placeholder="한줄평을 입력하세요..."
+              />
+              <ButtonContainer>
+                <Button onClick={handleOkayClick} disabled={comment.trim() !== ''}>괜찮아요</Button>
+                <Button onClick={handleCommentSubmit}>등록</Button>
+              </ButtonContainer>
+            </>
+          ) : (
+            <span>로그인하면 감상평을 남길 수 있어요!</span>
+          )}
         </ToastMessage>
       )}
 
