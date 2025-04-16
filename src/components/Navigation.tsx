@@ -1,6 +1,8 @@
 import styled from 'styled-components';
 import { useAuth } from '../contexts/AuthContext';
 import { useState, useRef, useEffect } from 'react';
+import firebase from '../firebase/config';
+import { auth } from '../firebase/config';
 
 const NavContainer = styled.nav`
   display: flex;
@@ -242,18 +244,29 @@ const Navigation = () => {
   // 관리자 권한 확인
   const isAdmin = currentUser && ADMIN_IDS.includes(currentUser.uid);
 
+  const handleGoogleLogin = () => {
+    const provider = new firebase.auth.GoogleAuthProvider();
+    auth.signInWithPopup(provider)
+      .then((result) => {
+        // 로그인 성공 시 처리 및 홈페이지로 리다이렉션
+        console.log('로그인 성공:', result.user);
+        window.location.href = '/';
+      })
+      .catch((error) => {
+        // 로그인 실패 시 처리
+        console.error('로그인 실패:', error);
+      });
+  };
+
   return (
     <NavContainer>
       <Logo onClick={() => navigateTo('/')}>詩路</Logo>
       <NavLinks>
         {currentUser ? (
           <>
-          
-            {/* <NavLink href="/profile">마이페이지</NavLink>  */}
             {isAdmin && (
               <NavLink href="/admin" style={{ color: '#757575' }}>관리자</NavLink>
             )}
-            
             <UserInfo>
               {isEditing ? (
                 <>
@@ -290,7 +303,9 @@ const Navigation = () => {
           </>
         ) : (
           <>
-            <NavButton href="/login">로그인</NavButton>
+            <NavButton onClick={handleGoogleLogin}>
+              로그인
+            </NavButton>
             <NavButton href="/signup" style={{ borderColor: '#212121' }}>
               회원가입
             </NavButton>
