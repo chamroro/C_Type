@@ -278,6 +278,33 @@ const RefreshIcon = () => (
   </svg>
 );
 
+// Buy Me a Coffee 버튼 스타일 추가
+const BuyMeCoffeeButton = styled.a`
+  position: fixed;
+  
+  bottom: 30px;
+  right: 50px;
+  z-index: 9999;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  background-color:rgb(246, 234, 178);
+  justify-content: center;
+  transform-origin: bottom right;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+  border-radius: 25px;
+  width: 50px;
+  height: 50px;
+  text-decoration: none;
+  font-size: 24px;
+  &:hover {
+    transform: scale(1.05);
+    box-shadow: 0 5px 12px rgba(0, 0, 0, 0.2);
+  }
+  
+
+`;
+
 const App: React.FC = () => {
   // 현재 경로 상태 관리
   const [path, setPath] = useState(window.location.pathname);
@@ -367,7 +394,13 @@ const App: React.FC = () => {
             content
           )}
         </MainContent>
+       
       </AppContainer>
+      
+      {/* Buy Me Coffee 버튼 추가 */}
+      <BuyMeCoffeeButton href="https://www.buymeacoffee.com/kimhaeun" target="_blank" rel="noopener noreferrer">
+          ☕️
+      </BuyMeCoffeeButton>
     </AuthProvider>
   );
 }
