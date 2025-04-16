@@ -102,14 +102,15 @@ export const getPoem = async (poemId: string): Promise<Poem | null> => {
  * 시 완료 정보 저장하기
  */
 export const saveCompletedPoem = async (
-  userId: string,
-  poemId: string
+  uid: string,
+  poemId: string,
+  comment: string
 ): Promise<void> => {
   try {
     // 시 문서의 completedUsers 배열에 사용자 ID 추가
     const poemRef = doc(db, 'poems', poemId);
     await updateDoc(poemRef, {
-      completedUsers: arrayUnion(userId)
+      completedUsers: arrayUnion({ id: uid, comment: comment || '' })
     });
     
     // 사용자 통계 업데이트 (필요하다면)

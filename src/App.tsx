@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef, createRef, RefObject } from 'react';
 import styled, { createGlobalStyle } from 'styled-components';
-import poems from './data/poems';
 import { AuthProvider } from './contexts/AuthContext';
 import Login from './components/Auth/Login';
 import Signup from './components/Auth/Signup';
@@ -12,6 +11,12 @@ import { db } from './firebase/config';
 
 // 글꼴 추가
 const GlobalStyle = createGlobalStyle`
+  @font-face {
+    font-family: 'Pretendard-Regular';
+    src: url('https://fastly.jsdelivr.net/gh/Project-Noonnu/noonfonts_2107@1.1/Pretendard-Bold.woff') format('woff');
+    font-weight: 700;
+    font-style: bold;
+  }
   @font-face {
     font-family: 'BookkMyungjo-Bd';
     src: url('https://fastly.jsdelivr.net/gh/projectnoonnu/noonfonts_2302@1.0/BookkMyungjo-Bd.woff2') format('woff2');
@@ -74,202 +79,8 @@ const AppContainer = styled.div`
 `;
 
 const MainContent = styled.main`
-  padding: 2rem 0;
+  padding: 0rem 0;
 `;
-
-const Title = styled.h1`
-  color: black;
-  margin-bottom: 1rem;
-`;
-
-const FontSelectorContainer = styled.div`
-  display: flex;
-  justify-content: center;
-  margin-bottom: 1rem;
-  flex-wrap: wrap;
-  gap: 10px;
-`;
-
-const FontChip = styled.button<{ isSelected: boolean }>`
-  padding: 8px 16px;
-  border-radius: 50px;
-  background-color: ${props => props.isSelected ? '#333' : '#f0f0f0'};
-  color: ${props => props.isSelected ? 'white' : '#333'};
-  border: 1px solid #ddd;
-  cursor: pointer;
-  font-size: 0.9rem;
-  transition: all 0.2s ease;
-  
-  &:hover {
-    background-color: ${props => props.isSelected ? '#555' : '#e0e0e0'};
-  }
-  
-  /* 각 폰트마다 실제 폰트를 미리보기로 적용 */
-  &.BookkMyungjo-Bd {
-    font-family: 'BookkMyungjo-Bd', serif;
-  }
-  
-  &.MaruBuri {
-    font-family: 'MaruBuri', serif;
-  }
-  
-  &.IntelOneMono {
-    font-family: 'IntelOneMono', monospace;
-  }
-  
-  &.Shilla_CultureB-Bold {
-    font-family: 'Shilla_CultureB-Bold', serif;
-  }
-  
-  &.YESMyoungjo-Regular {
-    font-family: 'YESMyoungjo-Regular', serif;
-  }
-  
-  &.MapoFlowerIsland {
-    font-family: 'MapoFlowerIsland', serif;
-  }
-`;
-
-const RefreshButton = styled.button`
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 8px 16px;
-  margin: 0 auto 1.5rem;
-  border-radius: 50px;
-  background-color: #f0f0f0;
-  color: #333;
-  border: 1px solid #ddd;
-  cursor: pointer;
-  font-size: 0.9rem;
-  transition: all 0.2s ease;
-  
-  &:hover {
-    background-color: #e0e0e0;
-  }
-  
-  svg {
-    margin-right: 8px;
-  }
-`;
-
-const PoemInfo = styled.div`
-  margin-bottom: 1.5rem;
-  
-  h2 {
-    font-size: 1.4rem;
-    margin-bottom: 0.3rem;
-  }
-  
-  p {
-    font-size: 1rem;
-    color: #666;
-  }
-`;
-
-const TypingArea = styled.div`
-  margin-bottom: 2rem;
-  position: relative;
-  text-align: left;
-`;
-
-const TextContainer = styled.div<{ fontFamily: string }>`
-  position: relative;
-  font-size: 1.5rem;
-  line-height: 1.8;
-  font-family: ${props => props.fontFamily}, monospace;
-`;
-
-const LineContainer = styled.div`
-  position: relative;
-  height: 1.8em;
-  margin-bottom: 0.2em;
-`;
-
-const BaseLine = styled.div<{ fontFamily: string }>`
-  white-space: pre;
-  color: lightgray;
-  position: absolute;
-  top: 0;
-  left: 0;
-  font-family: ${props => props.fontFamily}, monospace;
-`;
-
-const InputLine = styled.input<{ fontFamily: string }>`
-  width: 100%;
-  font-size: 1.5rem;
-  line-height: 1.8;
-  font-family: ${props => props.fontFamily}, monospace;
-  background: transparent;
-  border: none;
-  outline: none;
-  color: transparent;
-  caret-color: black;
-  position: absolute;
-  top: 0;
-  left: 0;
-  padding: 0;
-`;
-
-const OverlayLine = styled.div<{ fontFamily: string }>`
-  white-space: pre;
-  position: absolute;
-  top: 0;
-  left: 0;
-  font-family: ${props => props.fontFamily}, monospace;
-  pointer-events: none;
-`;
-
-const Char = styled.span<{ status: 'correct' | 'incorrect' | 'waiting' | 'composing' }>`
-  color: ${props => {
-    switch (props.status) {
-      case 'correct': return 'black';
-      case 'incorrect': return '#ff4444';
-      case 'waiting': return 'transparent';
-      case 'composing': return 'black'; // 조합 중인 글자는 검정색으로
-    }
-  }};
-`;
-
-const ProgressBar = styled.div`
-  width: 100%;
-  height: 4px;
-  background-color: #444;
-  margin-bottom: 1rem;
-  border-radius: 2px;
-`;
-
-const Progress = styled.div<{ width: number }>`
-  width: ${props => props.width}%;
-  height: 100%;
-  background-color: ${props => props.width === 100 ? '#4CAF50' : '#666'};
-  border-radius: 2px;
-  transition: width 0.3s ease;
-`;
-
-const CompletionMessage = styled.div<{ show: boolean }>`
-  position: fixed;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  background-color: rgba(0, 0, 0, 0.9);
-  padding: 2rem;
-  border-radius: 8px;
-  display: ${props => props.show ? 'block' : 'none'};
-  z-index: 100;
-  text-align: center;
-  color: white;
-`;
-
-// 폰트 옵션 정의
-const fontOptions = [
-  { id: 'BookkMyungjo-Bd', name: '부크크 명조' },
-  { id: 'MaruBuri', name: '마루부리' },
-  { id: 'IntelOneMono', name: 'Intel One Mono' },
-  { id: 'Shilla_CultureB-Bold', name: '신라문화체' },
-  { id: 'YESMyoungjo-Regular', name: '예스 명조' },
-  { id: 'MapoFlowerIsland', name: '마포꽃섬' }
-];
 
 // 새로고침 아이콘 컴포넌트
 const RefreshIcon = () => (

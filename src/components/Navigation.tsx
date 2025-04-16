@@ -6,7 +6,7 @@ const NavContainer = styled.nav`
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 1.5rem 2.5rem;
+  padding: 1.5rem 2.5rem 0.5rem 2.5rem;
   background-color: #fff;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
   font-family: 'Arial', sans-serif;
@@ -16,27 +16,18 @@ const NavContainer = styled.nav`
 `;
 
 const Logo = styled.div`
-  font-size: 1.75rem;
-  font-weight: 500;
+  font-size: 1.2rem;
+  font-weight: 900;
   color: #212121;
   letter-spacing: -0.02em;
   cursor: pointer;
   position: relative;
-  
-  &:after {
-    content: '';
-    position: absolute;
-    bottom: -4px;
-    left: 0;
-    width: 20px;
-    height: 1px;
-    background-color: #212121;
-  }
+
 `;
 
 const NavLinks = styled.div`
   display: flex;
-  gap: 2rem;
+  gap: 1rem;
   align-items: center;
 `;
 
@@ -46,10 +37,10 @@ const NavButton = styled.a`
   color: #212121;
   text-decoration: none;
   font-weight: 400;
-  font-size: 0.95rem;
+  font-size: 0.8rem;
   cursor: pointer;
   transition: all 0.3s;
-  border: 1px solid #e0e0e0;
+  border: none;
   letter-spacing: 0.02em;
 
   &:hover {
@@ -62,7 +53,7 @@ const NavLink = styled.a`
   color: #757575;
   text-decoration: none;
   padding: 0.5rem 0;
-  font-size: 0.95rem;
+  font-size: 0.8rem;
   letter-spacing: 0.02em;
   position: relative;
   
@@ -94,20 +85,10 @@ const UserInfo = styled.div`
   margin-left: 2rem;
   padding-left: 2rem;
   
-  &:before {
-    content: '';
-    position: absolute;
-    left: 0;
-    top: 50%;
-    transform: translateY(-50%);
-    height: 20px;
-    width: 1px;
-    background-color: #e0e0e0;
-  }
 `;
 
 const UserName = styled.span`
-  font-size: 0.95rem;
+  font-size: 0.8rem;
   font-weight: 400;
   color: #212121;
   letter-spacing: 0.01em;
@@ -130,7 +111,7 @@ const EditIcon = styled.button`
 `;
 
 const NicknameInput = styled.input`
-  font-size: 0.95rem;
+  font-size: 0.8rem;
   font-weight: 400;
   border: none;
   border-bottom: 1px solid #e0e0e0;
@@ -268,13 +249,11 @@ const Navigation = () => {
         {currentUser ? (
           <>
           
-            <NavLink href="/profile">마이페이지</NavLink> 
+            {/* <NavLink href="/profile">마이페이지</NavLink>  */}
             {isAdmin && (
               <NavLink href="/admin" style={{ color: '#757575' }}>관리자</NavLink>
             )}
-            <NavButton as="button" onClick={handleLogout}>
-              로그아웃
-            </NavButton>
+            
             <UserInfo>
               {isEditing ? (
                 <>
@@ -305,6 +284,9 @@ const Navigation = () => {
                 </>
               )}
             </UserInfo>
+            <NavButton as="button" onClick={handleLogout}>
+              로그아웃
+            </NavButton>
           </>
         ) : (
           <>

@@ -1,6 +1,5 @@
 import React, { useState, useRef, useEffect, createRef, RefObject } from 'react';
 import styled, { css } from 'styled-components';
-import poems from '../data/poems';
 import { auth, db } from '../firebase/config';
 import { addCompletedPoem } from '../firebase/auth';
 import { saveCompletedPoem, getCompletedUserIds } from '../firebase/poems';
@@ -13,62 +12,79 @@ interface Poem {
   author: string;
   content: string;
   id: string;
-  completedUsers?: string[];
+  completedUsers?: Array<{ id: string; comment: string }>; // 유저 ID와 댓글을 함께 저장
 }
 
 // 스타일 정의
 const Container = styled.div`
   max-width: 800px;
-  margin: 2rem auto;
-  padding: 3rem 4rem;
+  margin: 1rem auto;
+  padding: 3rem;
   background-color: #fff;
-  border-radius: 2px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-  font-family: 'YESMyoungjo-Regular', serif;
+  display: flex;
+  flex-direction: column;
+`;
+
+const Header = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: top;
+  min-height: 10px;
+  margin-bottom: 4rem;
 `;
 
 const Title = styled.h2`
-  text-align: center;
-  margin-bottom: 0.5rem;
-  color: #212121;
-  font-size: 2rem;
-  font-weight: 500;
+  color: #000;
+  font-size: 3rem;
+  font-weight: 900;
+  width: 30%;
+  white-space: pre-wrap;
+  word-break: keep-all;
+
   letter-spacing: -0.02em;
+  line-height: 1.3;
+  margin: 0;
 `;
 
 const Author = styled.p`
-  text-align: center;
-  margin-bottom: 3rem;
-  color: #757575;
+  color: #666;
   font-size: 1rem;
   letter-spacing: 0.01em;
-  font-style: normal;
-  position: relative;
-  
-  &:after {
-    content: '';
-    display: block;
-    width: 40px;
-    height: 1px;
-    background-color: #ddd;
-    margin: 1.5rem auto 0;
-  }
+  margin-top: 10px;
+`;
+
+const ContentArea = styled.div`
+  display: flex;
+  gap: 2rem;
+`;
+
+const LeftColumn = styled.div`
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+
+  align-items: flex-start;
+`;
+
+const RightColumn = styled.div`
+  flex: 3;
 `;
 
 const TypingArea = styled.div`
   margin-bottom: 3rem;
-  padding: 0 1rem;
 `;
 
 const LineContainer = styled.div`
   position: relative;
-  margin-bottom: 1.5rem;
-  min-height: 2.5rem;
-  line-height: 1.7;
+  // margin-bottom: 1.5rem;
+  min-height: 3rem;
+  line-height: 1;
+  font-size: 1.2rem;
 `;
 
 // 폰트 ID를 실제 폰트 패밀리 이름에 매핑하는 객체 추가
 const fontFamilyMap: { [key: string]: string } = {
+  'Pretendard-Bold': "'Pretendard-Bold', sans-serif",
   'BookkMyungjo-Bd': "'BookkMyungjo-Bd', serif",
   'MaruBuri': "'MaruBuri', serif",
   'IntelOneMono': "'IntelOneMono', monospace",
@@ -81,6 +97,7 @@ const fontFamilyMap: { [key: string]: string } = {
 const BaseLine = styled.div<{ fontFamily: string }>`
   font-family: ${props => fontFamilyMap[props.fontFamily] || props.fontFamily};
   visibility: hidden;
+  font-size: 1.2rem;
   white-space: pre-wrap;
   height: 0;
   width: 100%;
@@ -91,7 +108,8 @@ const BaseLine = styled.div<{ fontFamily: string }>`
 const InputLine = styled.input<{ fontFamily: string }>`
   width: 100%;
   padding: 0.5rem;
-  font-size: 1rem;
+  font-size: 1.2rem;
+  font-weight: 600; 
   border: none;
   background-color: transparent;
   outline: none;
@@ -99,8 +117,9 @@ const InputLine = styled.input<{ fontFamily: string }>`
   top: 0;
   left: 0;
   font-family: ${props => fontFamilyMap[props.fontFamily] || props.fontFamily};
-  caret-color: #4a90e2;
+  caret-color:rgb(0, 0, 0);
   color: transparent;
+
   line-height: 1.5;
 `;
 
@@ -149,77 +168,24 @@ const Char = styled.span<{ status: 'correct' | 'incorrect' | 'waiting' | 'compos
 
 const ProgressBar = styled.div`
   width: 100%;
-  height: 2px;
+  height: 4px;
   background-color: #f5f5f5;
-  margin-bottom: 3rem;
+  margin-bottom: 2rem;
+  border-radius: 2px;
   overflow: hidden;
 `;
 
 const Progress = styled.div<{ width: number }>`
   height: 100%;
   width: ${props => `${props.width}%`};
-  background-color: #212121;
+  background-color: #000;
   transition: width 0.4s ease;
-`;
-
-const RefreshButton = styled.button`
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  padding: 0.8rem 1.2rem;
-  background-color: transparent;
-  color: #212121;
-  border: 1px solid #e0e0e0;
   border-radius: 2px;
-  cursor: pointer;
-  margin: 2rem auto;
-  transition: all 0.3s;
-  font-size: 0.9rem;
-  letter-spacing: 0.03em;
-
-  &:hover {
-    background-color: #f9f9f9;
-    border-color: #bdbdbd;
-  }
-`;
-
-const CompletionMessage = styled.div<{ show: boolean }>`
-  text-align: center;
-  margin: 3rem auto;
-  padding: 2rem;
-  background-color: #f9f9f9;
-  border-left: 3px solid #212121;
-  color: #212121;
-  display: ${props => (props.show ? 'block' : 'none')};
-  animation: fadeIn 1s ease;
-
-  @keyframes fadeIn {
-    from {
-      opacity: 0;
-      transform: translateY(10px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
-
-  h2 {
-    margin-bottom: 1rem;
-    font-size: 1.5rem;
-    font-weight: 500;
-    letter-spacing: -0.01em;
-  }
-  
-  p {
-    font-size: 1rem;
-    line-height: 1.6;
-  }
 `;
 
 // 폰트 관련
 const fontOptions = [
+  { id: 'Pretendard-Bold', name: '프리텐다드' },
   { id: 'BookkMyungjo-Bd', name: '부크크 명조' },
   { id: 'MaruBuri', name: '마루부리' },
   { id: 'IntelOneMono', name: 'Intel One Mono' },
@@ -230,83 +196,32 @@ const fontOptions = [
 
 const FontSelectorContainer = styled.div`
   display: flex;
-  justify-content: center;
-  gap: 0.8rem;
+  justify-content: flex-start;
+  gap: 0.5rem;
   margin-bottom: 3rem;
   flex-wrap: wrap;
-  position: relative;
+`;
+
+const FontChip = styled.button<{ isSelected: boolean, fontFamily: string }>`
+  background: none;
+  border: none;
+  color: ${props => (props.isSelected ? '#000' : '#999')};
+  cursor: pointer;
+  font-size: 0.8rem;
+  transition: color 0.2s ease;
+  padding: 0;
+  font-family: ${props => fontFamilyMap[props.fontFamily] || props.fontFamily};
   
-  &:after {
-    content: '';
-    position: absolute;
-    bottom: -1.5rem;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 40px;
-    height: 1px;
-    background-color: #eee;
+
+  &:hover {
+    color: #000;
   }
 `;
 
-const FontChip = styled.button<{ isSelected: boolean }>`
-  padding: 0.5rem 0.8rem;
-  border: none;
-  border-radius: 0;
-  background-color: transparent;
-  color: ${props => (props.isSelected ? '#212121' : '#9e9e9e')};
-  cursor: pointer;
-  transition: all 0.2s ease;
-  position: relative;
-  font-size: 0.9rem;
-  
-  &:after {
-    content: '';
-    position: absolute;
-    bottom: 0;
-    left: 50%;
-    transform: translateX(-50%);
-    width: ${props => (props.isSelected ? '100%' : '0')};
-    height: 1px;
-    background-color: ${props => (props.isSelected ? '#212121' : 'transparent')};
-    transition: all 0.2s ease;
-  }
-
-  &:hover {
-    color: #212121;
-    
-    &:after {
-      width: 100%;
-      background-color: #e0e0e0;
-    }
-  }
-
-  &.BookkMyungjo-Bd {
-    font-family: 'BookkMyungjo-Bd', serif;
-  }
-  
-  &.MaruBuri {
-    font-family: 'MaruBuri', serif;
-  }
-  
-  &.IntelOneMono {
-    font-family: 'IntelOneMono', monospace;
-  }
-  
-  &.Shilla_CultureB-Bold {
-    font-family: 'Shilla_CultureB-Bold', serif;
-  }
-  
-  &.YESMyoungjo-Regular {
-    font-family: 'YESMyoungjo-Regular', serif;
-  }
-  
-  &.MapoFlowerIsland {
-    font-family: 'MapoFlowerIsland', serif;
-  }
-
-  &:focus {
-    outline: none;
-  }
+// '이 시를 적은 사람' 텍스트 스타일
+const CompletedUsersText = styled.p`
+  color: #666;
+  font-size: 0.8rem;
 `;
 
 // 새로고침 아이콘
@@ -441,59 +356,135 @@ const isPartOfNextChar = (current: string, target: string): boolean => {
   return isPartialVowel(current, target);
 };
 
-// 칩 컨테이너 스타일
-const CompletedUsersContainer = styled.div`
-  margin: 3rem 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-`;
-
+// '이 시를 적은 사람' 제목 스타일
 const CompletedUsersTitle = styled.h3`
-  font-size: 0.9rem;
+  font-size: 0.8rem;
   color: #757575;
-  margin-bottom: 1rem;
   font-weight: normal;
   letter-spacing: 0.03em;
-`;
-
-const UserChipsContainer = styled.div`
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 0.6rem;
-`;
-
-const UserChip = styled.div<{ isCurrentUser: boolean }>`
-  padding: 0.3rem 0.7rem;
-  background-color: ${props => props.isCurrentUser ? '#f5f5f5' : 'transparent'};
-  color: ${props => props.isCurrentUser ? '#212121' : '#757575'};
-  border: 1px solid ${props => props.isCurrentUser ? '#e0e0e0' : '#eee'};
-  border-radius: 2px;
-  font-size: 0.8rem;
-  white-space: nowrap;
+  margin: 0;
   display: flex;
   align-items: center;
+  cursor: pointer;
 `;
 
-// 토스트 메시지 스타일 추가
+// '이 시를 적은 사람' 컨테이너 스타일 수정
+const CompletedUsersContainer = styled.div`
+  margin-top: auto;
+`;
+
+// 새로고침 버튼 스타일 수정
+const RefreshButton = styled.button`
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 2rem;
+  color: #222;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  padding: 0;
+  transition: all 0.3s;
+  font-size: 0.9rem;
+  letter-spacing: 0.03em;
+  background-color: transparent;
+  &:hover {
+    font-size: 1rem;
+  }
+
+  svg path {
+    fill: #888;
+  }
+`;
+
+const ToggleButton = styled.button<{ isOpen: boolean }>`
+  background: none;
+  border: none;
+  color: #888;
+  cursor: pointer;
+  transform: rotate(${props => (props.isOpen ? '90deg' : '0deg')});
+  transition: transform 0.2s ease;
+
+`;
+
+// 토스트 메시지 스타일
 const ToastMessage = styled.div<{ show: boolean }>`
   position: fixed;
-  top: ${props => (props.show ? '20px' : '-100px')};
+  top: ${props => (props.show ? '20px' : '10px')};
   left: 50%;
   transform: translateX(-50%);
-  background-color: #212121;
+  background-color: #000;
   color: white;
-  padding: 0.8rem 1.5rem;
-  border-radius: 2px;
+  padding: 1rem 2rem;
+  border-radius: 8px;
   font-size: 0.9rem;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
   z-index: 1000;
   transition: top 0.5s ease;
   display: flex;
+  flex-direction: column;
   align-items: center;
   gap: 8px;
   letter-spacing: 0.01em;
+`;
+
+const CommentTextarea = styled.textarea`
+  width: 100%;
+  margin-top: 0.5rem;
+  padding: 0.5rem;
+  border-radius: 4px;
+  border: 1px solid #ccc;
+  resize: none;
+  font-size: 0.9rem;
+`;
+
+const ButtonContainer = styled.div`
+  display: flex;
+  gap: 1rem;
+  margin-top: 0.5rem;
+`;
+
+const Button = styled.button`
+  padding: 0.5rem 1rem;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: background-color 0.2s ease;
+
+  &:first-child {
+    background-color: #ccc;
+    color: #333;
+  }
+
+  &:last-child {
+    background-color: #4a90e2;
+    color: white;
+  }
+`;
+
+const CommentBubble = styled.span`
+  position: relative;
+  display: inline-block;
+  cursor: pointer;
+
+  &:hover .comment {
+    display: block;
+  }
+
+  .comment {
+    display: none;
+    position: absolute;
+    top: -2.4rem;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: #fff;
+    color: #333;
+    padding: 0.4rem;
+    border-radius: 20px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    white-space: nowrap;
+    z-index: 10;
+  }
 `;
 
 const PoetryTyping: React.FC = () => {
@@ -511,17 +502,21 @@ const PoetryTyping: React.FC = () => {
   const { currentUser } = useAuth();
   const [completedUserNames, setCompletedUserNames] = useState<{ [key: string]: string }>({});
   const [showAllCompletedToast, setShowAllCompletedToast] = useState(false);
+  const [isUsersOpen, setIsUsersOpen] = useState(false);
+  const [comment, setComment] = useState('');
 
   // 시 목록 가져오기
   useEffect(() => {
     const fetchPoems = async () => {
       try {
+        console.log('시 목록을 가져오는 중...');
         const poemsQuery = query(collection(db, 'poems'));
         const poemSnapshot = await getDocs(poemsQuery);
         const poemsList = poemSnapshot.docs.map(doc => ({
           id: doc.id,
           ...doc.data()
         })) as Poem[];
+        console.log('가져온 시 목록:', poemsList);
         setPoems(poemsList);
       } catch (error) {
         console.error('시 목록 가져오기 오류:', error);
@@ -532,6 +527,7 @@ const PoetryTyping: React.FC = () => {
 
   // 시 목록이 업데이트되면 자동으로 시를 불러옵니다
   useEffect(() => {
+    console.log('시 목록 업데이트:', poems);
     if (poems.length > 0 && !currentPoem) {
       loadNextPoem();
     }
@@ -549,20 +545,26 @@ const PoetryTyping: React.FC = () => {
 
   // 모든 줄이 정확히 입력되었는지 확인하고 축하 메시지 표시
   useEffect(() => {
+    console.log('라인 입력 상태:', lineInputs);
     if (!currentPoem || showCompletion) return;
-    
-    // 앞뒤 공백을 제거하고 비교
-    const allLinesCorrect = poemLines.every((line, i) => {
-      const cleanLine = line.trim();
-      const cleanInput = (lineInputs[i] || '').trim();
-      return cleanInput === cleanLine;
-    });
-    
-    if (allLinesCorrect && lineInputs.length === poemLines.length && lineInputs.some(input => input.trim() !== '')) {
+  
+    const meaningfulLines = poemLines
+      .map((line, i) => ({ line: line.trim(), input: (lineInputs[i] || '').trim() }))
+      .filter(({ line }) => line !== '');
+  
+    if (meaningfulLines.length === 0 || meaningfulLines.length !== poemLines.filter(l => l.trim() !== '').length) {
+      console.log('아직 미완성: 의미 있는 줄 수가 일치하지 않음');
+      return;
+    }
+  
+    const allCorrect = meaningfulLines.every(({ line, input }) => line === input);
+  
+    if (allCorrect) {
+      console.log('모든 줄이 정확히 입력됨, 완료 처리 시작');
       handleCompletion();
     }
   }, [lineInputs, poemLines, currentPoem, showCompletion]);
-
+  
   // 라인 입력 핸들러
   const handleLineInput = (index: number, value: string) => {
     const newLineInputs = [...lineInputs];
@@ -710,8 +712,10 @@ const PoetryTyping: React.FC = () => {
   // 새로운 시 불러오기
   const loadNextPoem = async () => {
     try {
+      console.log('새로운 시를 불러오는 중...');
       const selectedPoem = await getSelectedPoem(poems);
       if (selectedPoem) {
+        console.log('선택된 시:', selectedPoem);
         setCurrentPoem(selectedPoem);
         setLineInputs(Array(selectedPoem.content.split('\n').length).fill(''));
         setActiveLineIndex(0);
@@ -724,33 +728,32 @@ const PoetryTyping: React.FC = () => {
     }
   };
 
-  // 랜덤 시 선택 (ID 할당 보장)
   const getSelectedPoem = async (poemsList: Poem[]) => {
-    // 완료하지 않은 시들 중에서 랜덤으로 선택
-    const uncompletedPoems = poemsList.filter(poem => 
-      !poem.completedUsers?.includes(currentUser?.uid || '')
-    );
-
-    // 모든 시를 완료한 경우
+    console.log('시 선택 중...');
+    const uncompletedPoems = poemsList.filter(poem => {
+      const users = poem.completedUsers;
+  
+      if (!users || users.length === 0) return true;
+  
+      return !users.some(user => user.id === currentUser?.uid);
+    });
+  
+    console.log('미완료 시 목록:', uncompletedPoems);
+  
     if (uncompletedPoems.length === 0) {
-      // 토스트 메시지 표시
+      console.log('모든 시가 완료됨, 랜덤 시 선택');
       setShowAllCompletedToast(true);
-      
-      // 3초 후에 토스트 메시지 숨기기
-      setTimeout(() => {
-        setShowAllCompletedToast(false);
-      }, 5000);
-      
-      // 모든 시 중에서 랜덤으로 선택
+      setTimeout(() => setShowAllCompletedToast(false), 3000);
+  
       const randomIndex = Math.floor(Math.random() * poemsList.length);
       return poemsList[randomIndex] || null;
     }
-
+  
     const randomIndex = Math.floor(Math.random() * uncompletedPoems.length);
-    const selectedPoem = uncompletedPoems[randomIndex];
-    
-    return selectedPoem;
+    return uncompletedPoems[randomIndex];
   };
+  
+  
 
   // 라인 렌더링
   const renderLine = (line: string, index: number) => {
@@ -836,35 +839,18 @@ const PoetryTyping: React.FC = () => {
 
   // 완료 처리 함수
   const handleCompletion = async () => {
-    // 이미 완료 메시지가 표시되고 있으면 중복 실행 방지
     if (showCompletion) return;
     
-    console.log('축하 메시지 표시!');
+    console.log('완료 처리 중...');
     setShowCompletion(true);
     setProgress(100);
-    
-    // 현재 사용자와 시가 있는 경우에만 저장 처리
+  
     if (!currentPoem || !currentUser) return;
     
     try {
-      // 시 완료 저장 - completedUsers 배열에 사용자 ID 추가
-      await saveCompletedPoem(
-        currentUser.uid,
-        currentPoem.id
-      );
-      
-      // 사용자 통계 업데이트
       await addCompletedPoem(currentUser.uid, currentPoem.id);
       
-      // 현재 시 업데이트 - 완료한 사용자 추가
-      setCurrentPoem(prev => {
-        if (!prev) return null;
-        const completedUsers = prev.completedUsers || [];
-        return {
-          ...prev,
-          completedUsers: [...completedUsers, currentUser.uid]
-        };
-      });
+      
     } catch (error) {
       console.error('시 완료 저장 중 오류 발생:', error);
     }
@@ -899,36 +885,155 @@ const PoetryTyping: React.FC = () => {
   // 시가 로드되면 완료한 사용자 정보 가져오기
   useEffect(() => {
     if (currentPoem?.completedUsers && currentPoem.completedUsers.length > 0) {
-      fetchUserNicknames(currentPoem.completedUsers);
+      const userIds = currentPoem.completedUsers.map(user => user.id);
+      fetchUserNicknames(userIds);
     }
   }, [currentPoem]);
+  
+  
+
+  const toggleUsers = () => {
+    setIsUsersOpen(prev => !prev);
+  };
+
+  const handleCommentChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setComment(e.target.value);
+  };
+
+  const handleCommentSubmit = async () => {
+    if (!currentPoem || !currentUser) return;
+
+    try {
+      const updatedCompletedUsers = currentPoem.completedUsers?.map(user =>
+        user.id === currentUser.uid ? { ...user, comment } : user
+      ) || [];
+
+      // 댓글이 없는 경우 현재 유저 추가
+      if (!updatedCompletedUsers.some(user => user.id === currentUser.uid)) {
+        updatedCompletedUsers.push({ id: currentUser.uid, comment });
+      }
+
+      await saveCompletedPoem(currentUser.uid, currentPoem.id, comment);
+
+      
+      setCurrentPoem(prev => {
+        if (!prev) return null;
+        return {
+          ...prev,
+          completedUsers: updatedCompletedUsers
+        };
+      });
+
+      setShowCompletion(false);
+      setComment(''); // 댓글 초기화
+    } catch (error) {
+      console.error('댓글 저장 중 오류 발생:', error);
+    }
+  };
+
+  const handleOkayClick = () => {
+    if (!currentPoem || !currentUser) return;
+
+    const updatedCompletedUsers = currentPoem.completedUsers?.map(user =>
+      user.id === currentUser.uid ? { ...user, comment: '' } : user
+    ) || [];
+
+    if (!updatedCompletedUsers.some(user => user.id === currentUser.uid)) {
+      updatedCompletedUsers.push({ id: currentUser.uid, comment: '' });
+    }
+
+    setCurrentPoem(prev => {
+      if (!prev) return null;
+      return {
+        ...prev,
+        completedUsers: updatedCompletedUsers
+      };
+    });
+
+    setShowCompletion(false);
+    setComment(''); // 댓글 초기화
+  };
 
   return (
     <Container>
-      {/* 토스트 메시지 */}
-      <ToastMessage show={showAllCompletedToast}>
-        모든 시를 타이핑 했어요! 🙊
-      </ToastMessage>
-      
-      <FontSelectorContainer>
-        {fontOptions.map(font => (
-          <FontChip 
-            key={font.id}
-            isSelected={selectedFont === font.id}
-            onClick={() => handleFontChange(font.id)}
-            className={font.id}
-            type="button"
-          >
-            {font.name}
-          </FontChip>
-        ))}
-      </FontSelectorContainer>
+      {showAllCompletedToast && (
+        <ToastMessage show={true}>
+          모든 시를 타이핑 했어요! 🙊
+        </ToastMessage>
+      )}
 
-      {currentPoem ? (
-        <>
-          <Title>{currentPoem.title}</Title>
-          <Author>{currentPoem.author}</Author>
-          
+      {showCompletion && (
+        <ToastMessage show={true}>
+          시를 완성했어요! 🎉
+          <span>한줄평을 남길 수 있어요!</span>
+          <CommentTextarea value={comment} onChange={handleCommentChange} placeholder="한줄평을 입력하세요..." />
+          <ButtonContainer>
+            <Button onClick={handleOkayClick} disabled={comment.trim() !== ''}>괜찮아요</Button>
+            <Button onClick={handleCommentSubmit}>등록</Button>
+          </ButtonContainer>
+        </ToastMessage>
+      )}
+
+
+      <Header>
+        {currentPoem && (
+          <>
+            <Title>{currentPoem.title}</Title>
+            <Author>{currentPoem.author}</Author>
+          </>
+        )}
+      </Header>
+    
+      <ContentArea>
+        <LeftColumn>
+          <RefreshButton onClick={loadNextPoem}>
+              <RefreshIcon />
+              새로운 시
+            </RefreshButton>  
+            <FontSelectorContainer>
+              {fontOptions.map((font, index) => (
+                <React.Fragment key={font.id}>
+                  <FontChip 
+                    isSelected={selectedFont === font.id}
+                    onClick={() => handleFontChange(font.id)}
+                    className={font.id}
+                    type="button"
+                    fontFamily={font.id}
+                  >
+                    {font.name}
+                  </FontChip>
+                  {/* 마지막이 아니라면 구분자 추가 */}
+                  {index < fontOptions.length - 1 && <span style={{ margin: '0' , color: '#888', fontSize: '0.8rem'}}>/</span>}
+                </React.Fragment>
+              ))}
+            </FontSelectorContainer>
+
+
+          <CompletedUsersContainer>
+            <CompletedUsersTitle onClick={toggleUsers}>
+              <ToggleButton isOpen={isUsersOpen}>▶</ToggleButton>
+              이 시를 적은 사람
+              
+            </CompletedUsersTitle>
+            {isUsersOpen && (
+              <CompletedUsersText>
+                {Object.keys(completedUserNames).length === 0 ? (
+                  <span>'{currentPoem?.title}'의 첫번째 타이퍼가 되어주세요 ✍🏻</span>
+                ) : (
+                  currentPoem?.completedUsers?.map(({ id, comment }, index, array) => (
+                    <CommentBubble key={id}>
+                      {completedUserNames[id]} {comment && <span>💭</span>}
+                      {comment && <span className="comment">{comment}</span>}
+                      {index < array.length - 1 ? ', ' : ''}
+                    </CommentBubble>
+                  ))
+                )}
+              </CompletedUsersText>
+            )}
+          </CompletedUsersContainer>
+        </LeftColumn>
+
+        <RightColumn>
           <ProgressBar>
             <Progress width={progress} />
           </ProgressBar>
@@ -937,39 +1042,9 @@ const PoetryTyping: React.FC = () => {
             {poemLines.map((line, index) => renderLine(line, index))}
           </TypingArea>
 
-          <RefreshButton onClick={loadNextPoem}>
-            새로운 시 불러오기
-          </RefreshButton>
-
-          {/* 완료한 사용자 목록 표시 */}
-          {currentPoem.completedUsers && currentPoem.completedUsers.length > 0 && (
-            <CompletedUsersContainer>
-              <CompletedUsersTitle>이 시를 완료한 사용자</CompletedUsersTitle>
-              <UserChipsContainer>
-                {/* 중복 제거를 위해 filter 사용 */}
-                {currentPoem.completedUsers
-                  .filter((userId, index, self) => self.indexOf(userId) === index)
-                  .map((userId, index) => (
-                    <UserChip 
-                      key={index}
-                      isCurrentUser={userId === currentUser?.uid}
-                    >
-                      {completedUserNames[userId] || '사용자'}
-                    </UserChip>
-                  ))}
-              </UserChipsContainer>
-            </CompletedUsersContainer>
-          )}
-
-          <CompletionMessage show={showCompletion}>
-            <h2>🎉 축하합니다! 🎉</h2>
-            <p>성공적으로 시를 완성하셨습니다!</p>
-            <p>"{currentPoem.title}" - {currentPoem.author}</p>
-          </CompletionMessage>
-        </>
-      ) : (
-        <p>시를 불러오는 중...</p>
-      )}
+          
+        </RightColumn>
+      </ContentArea>
     </Container>
   );
 };
