@@ -10,15 +10,8 @@ export interface UserData {
   photoURL?: string;
   createdAt: any;
   lastLoginAt: any;
-  stats: UserStats;
 }
 
-// 사용자 통계 인터페이스
-export interface UserStats {
-  completedPoems: number;
-  totalTypingTime: number;
-  averageAccuracy: number;
-}
 
 // 사용자 컬렉션 참조
 const usersCollection = db.collection('users');
@@ -52,11 +45,6 @@ export const registerWithEmail = async (
       photoURL: user.photoURL || '',
       createdAt: firebase.firestore.FieldValue.serverTimestamp(),
       lastLoginAt: firebase.firestore.FieldValue.serverTimestamp(),
-      stats: {
-        completedPoems: 0,
-        totalTypingTime: 0,
-        averageAccuracy: 0
-      }
     };
     
     // Firestore에 사용자 정보 저장
@@ -105,11 +93,6 @@ export const loginWithEmail = async (
         photoURL: user.photoURL || '',
         createdAt: firebase.firestore.FieldValue.serverTimestamp(),
         lastLoginAt: firebase.firestore.FieldValue.serverTimestamp(),
-        stats: {
-          completedPoems: 0,
-          totalTypingTime: 0,
-          averageAccuracy: 0
-        }
       };
       
       await userDocRef.set(userData);
@@ -155,11 +138,6 @@ export const loginWithGoogle = async (): Promise<UserData> => {
         photoURL: user.photoURL || '',
         createdAt: firebase.firestore.FieldValue.serverTimestamp(),
         lastLoginAt: firebase.firestore.FieldValue.serverTimestamp(),
-        stats: {
-          completedPoems: 0,
-          totalTypingTime: 0,
-          averageAccuracy: 0
-        }
       };
       
       await userDocRef.set(userData);
@@ -286,23 +264,20 @@ export const updateUserNickname = async (
   }
 };
 
-// 작성 완료한 시 추가 함수
-export const addCompletedPoem = async (
-  userId: string,
-  poemId: string
-): Promise<void> => {
+/**
+ * 특정 유저의 completedPoems 배열에 시 ID를 추가
+ */
+export const addCompletedPoemToUser = async (userId: string, poemId: string): Promise<void> => {
   try {
-    const userDocRef = usersCollection.doc(userId);
-    const userDoc = await userDocRef.get();
-    
-    if (userDoc.exists) {
-      // stats.completedPoems 숫자만 증가
-      await userDocRef.update({
-        'stats.completedPoems': firebase.firestore.FieldValue.increment(1)
-      });
-    }
+    const userRef = usersCollection.doc(userId);
+
+    await userRef.update({
+      completedPoems: firebase.firestore.FieldValue.arrayUnion(poemId)
+    });
+
+    console.log(`유저 ${userId}의 completedPoems에 ${poemId} 추가됨`);
   } catch (error) {
-    console.error('완료한 시 추가 오류:', error);
+    console.error('completedPoems 업데이트 오류:', error);
     throw error;
   }
-}; 
+};

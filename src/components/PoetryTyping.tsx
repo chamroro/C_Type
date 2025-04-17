@@ -1,12 +1,10 @@
 import React, { useState, useRef, useEffect, createRef, RefObject } from 'react';
 import styled, { css } from 'styled-components';
-import { auth, db } from '../firebase/config';
-import { addCompletedPoem } from '../firebase/auth';
-import { saveCompletedPoem, getCompletedUserIds } from '../firebase/poems';
+import { db } from '../firebase/config';
+import { addCompletedPoemToUser } from '../firebase/auth';
+import { saveCompletedPoem} from '../firebase/poems';
 import { useAuth } from '../contexts/AuthContext';
 import { collection, getDocs, query, where, getDoc, doc } from 'firebase/firestore';
-import { useContext } from 'react';
-import AuthContext from '../contexts/AuthContext';
 
 // 시 인터페이스 정의 (poems.ts의 인터페이스와 일치하도록)
 interface Poem {
@@ -31,7 +29,7 @@ const Header = styled.div`
   display: flex;
   justify-content: space-between;
   align-items: top;
-  min-height: 10px;
+  min-height: 190px;
   margin-bottom: 4rem;
 `;
 
@@ -73,7 +71,7 @@ const RightColumn = styled.div`
 `;
 
 const TypingArea = styled.div`
-  margin-bottom: 3rem;
+  min-height: 300px;
 `;
 
 const LineContainer = styled.div`
@@ -224,6 +222,7 @@ const FontChip = styled.button<{ isSelected: boolean, fontFamily: string }>`
 const CompletedUsersText = styled.p`
   color: #666;
   font-size: 0.8rem;
+  margin: 0.5em 0;
 `;
 
 // 새로고침 아이콘
@@ -373,6 +372,7 @@ const CompletedUsersTitle = styled.h3`
 // '이 시를 적은 사람' 컨테이너 스타일 수정
 const CompletedUsersContainer = styled.div`
   margin-top: auto;
+  margin-bottom: 0.8rem;
 `;
 
 // 새로고침 버튼 스타일 수정
@@ -416,8 +416,9 @@ const ToastMessage = styled.div<{ show: boolean }>`
   transform: translateX(-50%);
   background-color: #000;
   color: white;
-  padding: 1rem 2rem;
-  border-radius: 8px;
+  padding: 1rem;
+  width: 300px;
+  border-radius: 20px;
   font-size: 0.9rem;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
   z-index: 1000;
@@ -425,32 +426,38 @@ const ToastMessage = styled.div<{ show: boolean }>`
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 8px;
+  gap: 4px;
   letter-spacing: 0.01em;
+  span {
+    font-size: 0.8rem;
+  }
 `;
 
 const CommentTextarea = styled.textarea`
   width: 100%;
   margin-top: 0.5rem;
-  padding: 0.5rem;
-  border-radius: 4px;
+  padding: 0.5rem 0.7rem;
+  border-radius: 20px;
   border: 1px solid #ccc;
   resize: none;
   font-size: 0.9rem;
+  height: 2.2rem;
+  overflow: hidden;
 `;
 
 const ButtonContainer = styled.div`
   display: flex;
-  gap: 1rem;
+  gap: 0.5rem;
   margin-top: 0.5rem;
 `;
 
 const Button = styled.button`
-  padding: 0.5rem 1rem;
+  padding: 0.25rem 0.6rem;
   border: none;
-  border-radius: 4px;
+  border-radius: 20px;
   cursor: pointer;
-  font-size: 0.9rem;
+  font-size: 0.8rem;
+  font-weight: 600;
   transition: background-color 0.2s ease;
 
   &:first-child {
@@ -512,19 +519,60 @@ const PoetryTyping: React.FC = () => {
   useEffect(() => {
     const fetchPoems = async () => {
       try {
-        console.log('시 목록을 가져오는 중...');
-        const poemsQuery = query(collection(db, 'poems'));
-        const poemSnapshot = await getDocs(poemsQuery);
-        const poemsList = poemSnapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        })) as Poem[];
-        console.log('가져온 시 목록:', poemsList);
-        setPoems(poemsList);
+        // URL에서 시 ID 가져오기
+        const pathParts = window.location.pathname.split('/');
+        const urlPoemId = pathParts[2]; // /poem/2 -> "2"
+
+        if (urlPoemId) {
+          console.log('URL에서 가져온 시 ID:', urlPoemId);
+          
+          // Firestore에서 직접 해당 ID의 시를 가져옴
+          const poemDoc = await getDoc(doc(db, 'poems', urlPoemId));
+          
+          if (poemDoc.exists()) {
+            const poemData = poemDoc.data();
+            const selectedPoem = {
+              id: poemDoc.id,
+              ...poemData
+            } as Poem;
+            
+            console.log('파이어스토어에서 가져온 시:', selectedPoem);
+            setCurrentPoem(selectedPoem);
+            setLineInputs(Array(selectedPoem.content.split('\n').length).fill(''));
+            setActiveLineIndex(0);
+            setIsComposing(false);
+            setProgress(0);
+            setShowCompletion(false);
+          } else {
+            console.error('해당 ID의 시를 찾을 수 없음:', urlPoemId);
+          }
+        } else {
+          // URL에 ID가 없는 경우 전체 시 목록을 가져옴
+          const poemsQuery = query(collection(db, 'poems'));
+          const poemSnapshot = await getDocs(poemsQuery);
+          const poemsList = poemSnapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+          })) as Poem[];
+          
+          setPoems(poemsList);
+          
+          // 랜덤 시 선택
+          const randomPoem = await getSelectedPoem(poemsList);
+          if (randomPoem) {
+            setCurrentPoem(randomPoem);
+            setLineInputs(Array(randomPoem.content.split('\n').length).fill(''));
+            setActiveLineIndex(0);
+            setIsComposing(false);
+            setProgress(0);
+            setShowCompletion(false);
+          }
+        }
       } catch (error) {
-        console.error('시 목록 가져오기 오류:', error);
+        console.error('시 가져오기 오류:', error);
       }
     };
+    
     fetchPoems();
   }, []);
 
@@ -715,6 +763,14 @@ const PoetryTyping: React.FC = () => {
   // 새로운 시 불러오기
   const loadNextPoem = async () => {
     try {
+      // URL이 /poem/id 형태인지 확인
+      const pathParts = window.location.pathname.split('/');
+      if (pathParts[1] === 'poem' && pathParts[2]) {
+        // 홈으로 이동
+        window.location.href = '/';
+        return;
+      }
+
       console.log('새로운 시를 불러오는 중...');
       const selectedPoem = await getSelectedPoem(poems);
       if (selectedPoem) {
@@ -731,32 +787,59 @@ const PoetryTyping: React.FC = () => {
     }
   };
 
+  // 미완료 시 필터링 함수 수정
   const getSelectedPoem = async (poemsList: Poem[]) => {
     console.log('시 선택 중...');
-    const uncompletedPoems = poemsList.filter(poem => {
-      const users = poem.completedUsers;
-  
-      if (!users || users.length === 0) return true;
-  
-      return !users.some(user => user.id === currentUser?.uid);
-    });
-  
-    console.log('미완료 시 목록:', uncompletedPoems);
-  
-    if (uncompletedPoems.length === 0) {
-      console.log('모든 시가 완료됨, 랜덤 시 선택');
-      setShowAllCompletedToast(true);
-      setTimeout(() => setShowAllCompletedToast(false), 3000);
-  
+    
+    try {
+      // 로그인하지 않은 경우 랜덤하게 시 선택
+      if (!currentUser) {
+        console.log('로그인하지 않은 사용자: 랜덤 시 선택');
+        const randomIndex = Math.floor(Math.random() * poemsList.length);
+        return poemsList[randomIndex] || null;
+      }
+
+      // 현재 사용자의 완료한 시 목록 가져오기
+      const userRef = doc(db, 'users', currentUser.uid);
+      const userDoc = await getDoc(userRef);
+      
+      if (!userDoc.exists()) {
+        console.log('사용자 문서가 없음, 모든 시가 미완료 상태');
+        const randomIndex = Math.floor(Math.random() * poemsList.length);
+        return poemsList[randomIndex];
+      }
+
+      const userData = userDoc.data();
+      const completedPoemIds: string[] = userData.completedPoems || [];
+      
+      console.log('사용자가 완료한 시 ID 목록:', completedPoemIds);
+
+      // 완료하지 않은 시 필터링
+      const uncompletedPoems = poemsList.filter(poem => !completedPoemIds.includes(poem.id));
+      console.log('미완료 시 목록:', uncompletedPoems);
+
+      if (uncompletedPoems.length === 0) {
+        console.log('모든 시가 완료됨');
+        setShowAllCompletedToast(true);
+        setTimeout(() => setShowAllCompletedToast(false), 3000);
+        // 모든 시를 완료한 경우 랜덤하게 선택
+        const randomIndex = Math.floor(Math.random() * poemsList.length);
+        return poemsList[randomIndex];
+      }
+
+      // 미완료 시 중에서 랜덤 선택
+      const randomIndex = Math.floor(Math.random() * uncompletedPoems.length);
+      const selectedPoem = uncompletedPoems[randomIndex];
+      console.log('선택된 미완료 시:', selectedPoem);
+      return selectedPoem;
+
+    } catch (error) {
+      console.error('시 선택 중 오류 발생:', error);
+      // 에러 발생 시 랜덤하게 시 선택
       const randomIndex = Math.floor(Math.random() * poemsList.length);
-      return poemsList[randomIndex] || null;
+      return poemsList[randomIndex];
     }
-  
-    const randomIndex = Math.floor(Math.random() * uncompletedPoems.length);
-    return uncompletedPoems[randomIndex];
   };
-  
-  
 
   // 라인 렌더링
   const renderLine = (line: string, index: number) => {
@@ -852,7 +935,8 @@ const PoetryTyping: React.FC = () => {
     if (!currentPoem || !currentUser) return;
     
     try {
-      await addCompletedPoem(currentUser.uid, currentPoem.id);
+
+      // await addCompletedPoemToUser(currentUser.uid, currentPoem.id);
     } catch (error) {
       console.error('시 완료 저장 중 오류 발생:', error);
     }
@@ -916,7 +1000,7 @@ const PoetryTyping: React.FC = () => {
       }
 
       await saveCompletedPoem(currentUser.uid, currentPoem.id, comment);
-
+      await addCompletedPoemToUser(currentUser.uid, currentPoem.id);
       setCurrentPoem(prev => {
         if (!prev) return null;
         return {
@@ -979,7 +1063,8 @@ const PoetryTyping: React.FC = () => {
               <CommentTextarea 
                 value={comment} 
                 onChange={handleCommentChange} 
-                placeholder="한줄평을 입력하세요..."
+                placeholder="한줄평을 입력하세요...(15자 이내)"
+                maxLength={15}
               />
               <ButtonContainer>
                 <Button onClick={handleOkayClick} disabled={comment.trim() !== ''}>괜찮아요</Button>
@@ -1040,9 +1125,9 @@ const PoetryTyping: React.FC = () => {
                 ) : (
                   currentPoem?.completedUsers?.map(({ id, comment }, index, array) => (
                     <CommentBubble key={id}>
-                      {completedUserNames[id]} {comment && <span>💭</span>}
+                      {completedUserNames[id]} {comment && <span>💭, </span>}
                       {comment && <span className="comment">{comment}</span>}
-                      {index < array.length - 1 ? ', ' : ''}
+                      {index < array.length - 1 ? ',  ' : ''}
                     </CommentBubble>
                   ))
                 )}

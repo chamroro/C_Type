@@ -8,13 +8,6 @@ export interface User {
   photoURL?: string;
   createdAt: Timestamp;
   lastLoginAt: Timestamp;
-  stats: UserStats;
-}
-
-export interface UserStats {
-  completedPoems: number;
-  totalTypingTime: number;
-  averageAccuracy: number;
 }
 
 // 시 관련 타입 정의

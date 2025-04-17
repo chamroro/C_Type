@@ -95,11 +95,11 @@ const BuyMeCoffeeButton = styled.a`
   
   bottom: 30px;
   right: 50px;
-  z-index: 9999;
+  z-index: 20;
   transition: all 0.3s ease;
   display: flex;
   align-items: center;
-  background-color:rgb(246, 234, 178);
+  background-color:rgb(90, 102, 87);
   justify-content: center;
   transform-origin: bottom right;
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
@@ -207,10 +207,8 @@ const App: React.FC = () => {
         </MainContent>
        
       </AppContainer>
-      
-      {/* Buy Me Coffee 버튼 추가 */}
       <BuyMeCoffeeButton href="https://www.buymeacoffee.com/kimhaeun" target="_blank" rel="noopener noreferrer">
-          ☕️
+        💌
       </BuyMeCoffeeButton>
     </AuthProvider>
   );
