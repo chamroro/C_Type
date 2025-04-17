@@ -4,6 +4,8 @@ import { useState, useRef, useEffect } from 'react';
 import firebase from '../firebase/config';
 import { auth } from '../firebase/config';
 import { db } from '../firebase/config';
+import { useHistory } from 'react-router-dom';
+import { getDoc, doc, setDoc, collection, getDocs, query, orderBy, where } from 'firebase/firestore';
 
 interface Poem {
   id: string;
@@ -259,6 +261,71 @@ const CancelIcon = () => (
 // 관리자 아이디 목록
 const ADMIN_IDS = ['O8rZTec7RnX3jDBkR7NMuW7gEF93'];
 
+const Modal = styled.div`
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 2000;
+`;
+
+const ModalContent = styled.div`
+  background-color: white;
+  padding: 2rem;
+  border-radius: 10px;
+  width: 90%;
+  max-width: 400px;
+  text-align: center;
+  font-family: 'Pretendard-Regular';
+
+  h2 {
+    margin: 0 0 1rem;
+    font-size: 1.5rem;
+    color: #000;
+  }
+
+  p {
+    margin-bottom: 1.5rem;
+    color: #666;
+  }
+`;
+
+const ModalInput = styled.input`
+  width: 100%;
+  padding: 0.8rem;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  margin-bottom: 1rem;
+  font-size: 1rem;
+  font-family: 'Pretendard-Regular';
+
+  &:focus {
+    outline: none;
+    border-color: #000;
+  }
+`;
+
+const ModalButton = styled.button`
+  padding: 0.8rem 2rem;
+  background-color: rgb(73, 92, 75);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 1rem;
+  font-family: 'Pretendard-Regular';
+  transition: all 0.2s;
+
+  &:hover {
+    background-color: rgb(90, 102, 87);
+  }
+`;
+
 const Navigation = () => {
   const { currentUser, logout, updateNickname } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
@@ -269,7 +336,9 @@ const Navigation = () => {
   const [inputWidth, setInputWidth] = useState(0);
   const nicknameInputRef = useRef<HTMLInputElement>(null);
   const userNameRef = useRef<HTMLSpanElement>(null);
+  const [showNicknameModal, setShowNicknameModal] = useState(false);
 
+  
   // 사용자 정보 및 완료한 시 목록 가져오기
   useEffect(() => {
     if (currentUser) {
@@ -345,10 +414,40 @@ const Navigation = () => {
     auth.signInWithPopup(provider)
       .then((result) => {
         console.log('로그인 성공:', result.user);
-        window.location.href = '/';
+        // 새로운 사용자인지 확인
+        const isNewUser = result.additionalUserInfo?.isNewUser;
+        if (isNewUser) {
+          // 닉네임 설정 모달 표시
+          setShowNicknameModal(true);
+        } else {
+          window.location.href = '/';
+        }
       })
       .catch((error) => {
         console.error('로그인 실패:', error);
+      });
+  };
+
+  const handleGoogleSignUp = () => {
+    const provider = new firebase.auth.GoogleAuthProvider();
+    auth.signInWithPopup(provider)
+      .then(async (result) => {
+        console.log('회원가입 성공:', result.user);
+        const isNewUser = result.additionalUserInfo?.isNewUser;
+        
+        if (isNewUser && result.user) {
+          // 새로운 사용자의 경우 닉네임 설정 모달 표시
+          setShowNicknameModal(true);
+          // 기본 닉네임으로 displayName 설정
+          setNickname(result.user.displayName || '');
+        } else {
+          alert('이미 가입된 계정입니다. 로그인을 진행합니다.');
+          window.location.href = '/';
+        }
+      })
+      .catch((error) => {
+        console.error('회원가입 실패:', error);
+        alert('회원가입 중 오류가 발생했습니다.');
       });
   };
 
@@ -358,8 +457,23 @@ const Navigation = () => {
 
   const handleSaveNickname = async () => {
     if (nickname.trim() && currentUser) {
+      const trimmedNickname = nickname.trim();
+      const myUid = currentUser.uid;
+  
       try {
-        await updateNickname(nickname);
+        // 닉네임 중복 체크 (자기 자신은 제외)
+        const nicknameQuery = await db.collection('users')
+          .where('nickname', '==', trimmedNickname)
+          .get();
+  
+        const isDuplicate = nicknameQuery.docs.some(doc => doc.id !== myUid);
+  
+        if (isDuplicate) {
+          alert('이미 사용 중인 닉네임입니다. 다른 닉네임을 입력해주세요.');
+          return;
+        }
+  
+        await updateNickname(trimmedNickname);
         setIsEditing(false);
       } catch (error) {
         console.error('닉네임 업데이트 실패:', error);
@@ -367,6 +481,7 @@ const Navigation = () => {
       }
     }
   };
+  
 
   const handleCancelEdit = () => {
     setNickname(currentUser?.nickname || currentUser?.displayName || '');
@@ -385,6 +500,60 @@ const Navigation = () => {
       window.location.href = `/poem/${poemId}`;
     } else {
       window.location.href = `/poem/${poemId}`;
+    }
+  };
+
+  const handleNicknameSubmit = async () => {
+    console.log('닉네임 설정 시도:', nickname);
+    
+    if (!nickname.trim()) {
+      alert('닉네임을 입력해주세요.');
+      return;
+    }
+
+    try {
+      // 닉네임 중복 체크
+      const nicknameQuery = query(
+        collection(db, 'users'),
+        where('nickname', '==', nickname.trim())
+      );
+      const querySnapshot = await getDocs(nicknameQuery);
+
+      if (!querySnapshot.empty) {
+        alert('이미 사용 중인 닉네임입니다. 다른 닉네임을 입력해주세요.');
+        return;
+      }
+
+      const authUser = auth.currentUser;
+      if (!authUser) {
+        alert('로그인이 필요합니다.');
+        return;
+      }
+
+      console.log('사용자 문서 생성 시도:', authUser.uid);
+
+      // 사용자 문서 생성
+      const userRef = doc(db, 'users', authUser.uid);
+      await setDoc(userRef, {
+        nickname: nickname.trim(),
+        uid: authUser.uid,
+        lastLoginAt: new Date(),
+        displayName: authUser.displayName,
+        email: authUser.email,
+        photoURL: authUser.photoURL,
+        completedPoems: [],
+        createdAt: new Date()
+      });
+
+      console.log('사용자 문서 생성 완료');
+      
+      // 상태 초기화 및 페이지 새로고침
+      setShowNicknameModal(false);
+      setNickname('');
+      window.location.href = '/';
+    } catch (error) {
+      console.error('닉네임 설정 오류:', error);
+      alert('닉네임 설정 중 오류가 발생했습니다. 다시 시도해주세요.');
     }
   };
 
@@ -464,12 +633,32 @@ const Navigation = () => {
               ) : (
                 <div>
                   <NavButton onClick={handleGoogleLogin}>로그인</NavButton>
+                  <NavButton onClick={handleGoogleSignUp} style={{ marginLeft: '1rem' }}>회원가입</NavButton>
                 </div>
               )}
             </BottomInfo>
           </RightSec>
         </OverlayContent>
       </Overlay>
+
+      {showNicknameModal && (
+        <Modal>
+          <ModalContent>
+            <h2>닉네임 설정</h2>
+            <p>시를 타이핑하기 전에 닉네임을 설정해주세요.</p>
+            <ModalInput
+              type="text"
+              value={nickname}
+              onChange={(e) => setNickname(e.target.value)}
+              placeholder="닉네임을 입력하세요"
+              maxLength={10}
+            />
+            <ModalButton onClick={handleNicknameSubmit}>
+              확인
+            </ModalButton>
+          </ModalContent>
+        </Modal>
+      )}
     </>
   );
 };

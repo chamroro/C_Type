@@ -210,11 +210,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // 성공 로그
       console.log('닉네임 업데이트 완료:', nickname);
       
-      // 성공 메시지 표시
-      alert('닉네임이 성공적으로 업데이트되었습니다.');
       
-      // 홈페이지로 리다이렉트
-      window.location.href = '/';
     } catch (error: any) {
       console.error('닉네임 업데이트 실패:', error);
       const errorMessage = error.message || '알 수 없는 오류';
