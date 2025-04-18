@@ -1,0 +1,10 @@
+# https://ctype.kr
+User-agent: *
+Allow: /
+Disallow: /admin
+
+# Sitemap
+Sitemap: https://ctype.kr/sitemap.xml
+
+# Crawl-delay
+Crawl-delay: 10 
