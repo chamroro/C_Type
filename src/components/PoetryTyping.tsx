@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect, createRef, RefObject } from 'react';
 import styled, { css } from 'styled-components';
+import { Helmet } from 'react-helmet';
 import { db } from '../firebase/config';
 import { addCompletedPoemToUser } from '../firebase/auth';
 import { saveCompletedPoem} from '../firebase/poems';
@@ -514,6 +515,8 @@ const PoetryTyping: React.FC = () => {
   const [isUsersOpen, setIsUsersOpen] = useState(false);
   const [comment, setComment] = useState('');
   const [isCompleted, setIsCompleted] = useState(false);
+  const POEM_COUNT = 20; 
+
 
   // 시 목록 가져오기
   useEffect(() => {
@@ -556,16 +559,20 @@ const PoetryTyping: React.FC = () => {
           })) as Poem[];
           
           setPoems(poemsList);
-          
-          // 랜덤 시 선택
-          const randomPoem = await getSelectedPoem(poemsList);
-          if (randomPoem) {
-            setCurrentPoem(randomPoem);
-            setLineInputs(Array(randomPoem.content.split('\n').length).fill(''));
+          const randomId = getRandomPoemId();
+          const poemDoc = await getDoc(doc(db, 'poems', randomId));
+          if (poemDoc.exists()) {
+            const poemData = poemDoc.data();
+            const selectedPoem = { id: poemDoc.id, ...poemData } as Poem;
+            setCurrentPoem(selectedPoem);
+            setLineInputs(Array(selectedPoem.content.split('\n').length).fill(''));
             setActiveLineIndex(0);
             setIsComposing(false);
             setProgress(0);
             setShowCompletion(false);
+            console.log('랜덤 시 불러오기 성공:', selectedPoem);
+          } else {
+            console.error(`랜덤 ID(${randomId})의 시를 찾을 수 없습니다.`);
           }
         }
       } catch (error) {
@@ -580,7 +587,7 @@ const PoetryTyping: React.FC = () => {
   useEffect(() => {
     console.log('시 목록 업데이트:', poems);
     if (poems.length > 0 && !currentPoem) {
-      loadNextPoem();
+      loadRandomPoem();
     }
   }, [poems]);
 
@@ -760,86 +767,42 @@ const PoetryTyping: React.FC = () => {
     setSelectedFont(fontId);
   };
 
-  // 새로운 시 불러오기
-  const loadNextPoem = async () => {
-    try {
-      // URL이 /poem/id 형태인지 확인
-      const pathParts = window.location.pathname.split('/');
-      if (pathParts[1] === 'poem' && pathParts[2]) {
-        // 홈으로 이동
-        window.location.href = '/';
-        return;
-      }
 
-      console.log('새로운 시를 불러오는 중...');
-      const selectedPoem = await getSelectedPoem(poems);
-      if (selectedPoem) {
-        console.log('선택된 시:', selectedPoem);
+  const getRandomPoemId = () => {
+    const randomNumber = Math.floor(Math.random() * POEM_COUNT) + 1; // 1 ~ POEM_COUNT
+    return String(randomNumber); 
+  };
+  
+  const loadRandomPoem = async () => {
+     // URL이 /poem/id 형태인지 확인
+     const pathParts = window.location.pathname.split('/');
+     if (pathParts[1] === 'poem' && pathParts[2]) {
+       // 홈으로 이동
+       window.location.href = '/';
+       return;
+     }
+
+    const randomId = getRandomPoemId();
+    try {
+      const poemDoc = await getDoc(doc(db, 'poems', randomId));
+      if (poemDoc.exists()) {
+        const poemData = poemDoc.data();
+        const selectedPoem = { id: poemDoc.id, ...poemData } as Poem;
         setCurrentPoem(selectedPoem);
         setLineInputs(Array(selectedPoem.content.split('\n').length).fill(''));
         setActiveLineIndex(0);
         setIsComposing(false);
         setProgress(0);
         setShowCompletion(false);
+        console.log('랜덤 시 불러오기 성공:', selectedPoem);
+      } else {
+        console.error(`랜덤 ID(${randomId})의 시를 찾을 수 없습니다.`);
       }
     } catch (error) {
-      console.error('다음 시 로드 중 오류 발생:', error);
+      console.error('랜덤 시 불러오기 실패:', error);
     }
   };
-
-  // 미완료 시 필터링 함수 수정
-  const getSelectedPoem = async (poemsList: Poem[]) => {
-    console.log('시 선택 중...');
-    
-    try {
-      // 로그인하지 않은 경우 랜덤하게 시 선택
-      if (!currentUser) {
-        console.log('로그인하지 않은 사용자: 랜덤 시 선택');
-        const randomIndex = Math.floor(Math.random() * poemsList.length);
-        return poemsList[randomIndex] || null;
-      }
-
-      // 현재 사용자의 완료한 시 목록 가져오기
-      const userRef = doc(db, 'users', currentUser.uid);
-      const userDoc = await getDoc(userRef);
-      
-      if (!userDoc.exists()) {
-        console.log('사용자 문서가 없음, 모든 시가 미완료 상태');
-        const randomIndex = Math.floor(Math.random() * poemsList.length);
-        return poemsList[randomIndex];
-      }
-
-      const userData = userDoc.data();
-      const completedPoemIds: string[] = userData.completedPoems || [];
-      
-      console.log('사용자가 완료한 시 ID 목록:', completedPoemIds);
-
-      // 완료하지 않은 시 필터링
-      const uncompletedPoems = poemsList.filter(poem => !completedPoemIds.includes(poem.id));
-      console.log('미완료 시 목록:', uncompletedPoems);
-
-      if (uncompletedPoems.length === 0) {
-        console.log('모든 시가 완료됨');
-        setShowAllCompletedToast(true);
-        setTimeout(() => setShowAllCompletedToast(false), 3000);
-        // 모든 시를 완료한 경우 랜덤하게 선택
-        const randomIndex = Math.floor(Math.random() * poemsList.length);
-        return poemsList[randomIndex];
-      }
-
-      // 미완료 시 중에서 랜덤 선택
-      const randomIndex = Math.floor(Math.random() * uncompletedPoems.length);
-      const selectedPoem = uncompletedPoems[randomIndex];
-      console.log('선택된 미완료 시:', selectedPoem);
-      return selectedPoem;
-
-    } catch (error) {
-      console.error('시 선택 중 오류 발생:', error);
-      // 에러 발생 시 랜덤하게 시 선택
-      const randomIndex = Math.floor(Math.random() * poemsList.length);
-      return poemsList[randomIndex];
-    }
-  };
+  
 
   // 라인 렌더링
   const renderLine = (line: string, index: number) => {
@@ -1047,7 +1010,9 @@ const PoetryTyping: React.FC = () => {
   }, [showCompletion]);
 
   return (
+ 
     <Container>
+    
       {showAllCompletedToast && (
         <ToastMessage show={true}>
           모든 시를 타이핑 했어요! 🙊
@@ -1089,7 +1054,7 @@ const PoetryTyping: React.FC = () => {
     
       <ContentArea>
         <LeftColumn>
-          <RefreshButton onClick={loadNextPoem}>
+          <RefreshButton onClick={loadRandomPoem}>
               <RefreshIcon />
               새로운 시
             </RefreshButton>  
