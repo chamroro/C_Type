@@ -8,6 +8,8 @@ import PoetryTyping from './components/PoetryTyping';
 import AdminPoems from './components/Admin/AdminPoems';
 import { collection, getDocs } from 'firebase/firestore';
 import { db } from './firebase/config';
+import MobileWarning from './components/MobileWarning';
+import { BrowserRouter as Router, Route, Switch } from 'react-router-dom';
 
 // 글꼴 추가
 const GlobalStyle = createGlobalStyle`
@@ -192,25 +194,27 @@ const App: React.FC = () => {
   }
 
   return (
-    <AuthProvider>
-      <GlobalStyle />
-      <AppContainer>
-        <Navigation />
-        <MainContent>
-          {!isInitialized ? (
-            <div style={{ textAlign: 'center', padding: '2rem' }}>
-              데이터를 불러오는 중입니다...
-            </div>
-          ) : (
-            content
-          )}
-        </MainContent>
-       
-      </AppContainer>
-      <BuyMeCoffeeButton href="https://www.buymeacoffee.com/kimhaeun" target="_blank" rel="noopener noreferrer">
-        💌
-      </BuyMeCoffeeButton>
-    </AuthProvider>
+    <Router>
+      <AuthProvider>
+        <MobileWarning />
+        <GlobalStyle />
+        <AppContainer>
+          <Navigation />
+          <MainContent>
+            {!isInitialized ? (
+              <div style={{ textAlign: 'center', padding: '2rem' }}>
+                데이터를 불러오는 중입니다...
+              </div>
+            ) : (
+              content
+            )}
+          </MainContent>
+        </AppContainer>
+        <BuyMeCoffeeButton href="https://www.buymeacoffee.com/kimhaeun" target="_blank" rel="noopener noreferrer">
+          💌
+        </BuyMeCoffeeButton>
+      </AuthProvider>
+    </Router>
   );
 }
 
