@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, createRef, RefObject } from 'react';
 import styled, { createGlobalStyle } from 'styled-components';
-import { AuthProvider } from './contexts/AuthContext';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
 import Login from './components/Auth/Login';
 import Signup from './components/Auth/Signup';
 import Navigation from './components/Navigation';
@@ -10,6 +10,7 @@ import { collection, getDocs } from 'firebase/firestore';
 import { db } from './firebase/config';
 import MobileWarning from './components/MobileWarning';
 import { BrowserRouter as Router, Route, Switch } from 'react-router-dom';
+import LoginBubble from './components/LoginBubble';
 
 // 글꼴 추가
 const GlobalStyle = createGlobalStyle`
@@ -118,8 +119,8 @@ const BuyMeCoffeeButton = styled.a`
 
 `;
 
-const App: React.FC = () => {
-  // 현재 경로 상태 관리
+const AppContent = () => {
+  const { currentUser } = useAuth();
   const [path, setPath] = useState(window.location.pathname);
   const [isInitialized, setIsInitialized] = useState(false);
   const [poemsLoaded, setPoemsLoaded] = useState(false);
@@ -194,25 +195,34 @@ const App: React.FC = () => {
   }
 
   return (
+    <>
+      <MobileWarning />
+      <GlobalStyle />
+      <AppContainer>
+        <Navigation />
+        <MainContent>
+          {!isInitialized ? (
+            <div style={{ textAlign: 'center', padding: '2rem' }}>
+              데이터를 불러오는 중입니다...
+            </div>
+          ) : (
+            content
+          )}
+        </MainContent>
+      </AppContainer>
+      {!currentUser && <LoginBubble />}
+      <BuyMeCoffeeButton href="https://www.buymeacoffee.com/kimhaeun" target="_blank" rel="noopener noreferrer">
+        💌
+      </BuyMeCoffeeButton>
+    </>
+  );
+};
+
+function App() {
+  return (
     <Router>
       <AuthProvider>
-        <MobileWarning />
-        <GlobalStyle />
-        <AppContainer>
-          <Navigation />
-          <MainContent>
-            {!isInitialized ? (
-              <div style={{ textAlign: 'center', padding: '2rem' }}>
-                데이터를 불러오는 중입니다...
-              </div>
-            ) : (
-              content
-            )}
-          </MainContent>
-        </AppContainer>
-        <BuyMeCoffeeButton href="https://www.buymeacoffee.com/kimhaeun" target="_blank" rel="noopener noreferrer">
-          💌
-        </BuyMeCoffeeButton>
+        <AppContent />
       </AuthProvider>
     </Router>
   );
