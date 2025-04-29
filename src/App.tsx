@@ -11,6 +11,7 @@ import { db } from './firebase/config';
 import MobileWarning from './components/MobileWarning';
 import { BrowserRouter as Router, Route, Switch } from 'react-router-dom';
 import LoginBubble from './components/LoginBubble';
+import DailyPopup from './components/DailyPopup';
 
 // 글꼴 추가
 const GlobalStyle = createGlobalStyle`
@@ -211,6 +212,7 @@ const AppContent = () => {
         </MainContent>
       </AppContainer>
       {!currentUser && <LoginBubble />}
+      <DailyPopup />
       <BuyMeCoffeeButton href="https://www.buymeacoffee.com/kimhaeun" target="_blank" rel="noopener noreferrer">
         💌
       </BuyMeCoffeeButton>
