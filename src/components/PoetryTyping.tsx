@@ -77,9 +77,8 @@ const TypingArea = styled.div`
 
 const LineContainer = styled.div`
   position: relative;
-  // margin-bottom: 1.5rem;
-  min-height: 3rem;
-  line-height: 1;
+  margin-bottom: 1rem;
+  min-height: fit-content;
   font-size: 1.2rem;
 `;
 
@@ -100,7 +99,7 @@ const BaseLine = styled.div<{ fontFamily: string }>`
   visibility: hidden;
   font-size: 1.2rem;
   white-space: pre-wrap;
-  height: 0;
+  min-height: fit-content;
   width: 100%;
   padding: 0.5rem;
   line-height: 1.5;
@@ -118,10 +117,9 @@ const InputLine = styled.input<{ fontFamily: string }>`
   top: 0;
   left: 0;
   font-family: ${props => fontFamilyMap[props.fontFamily] || props.fontFamily};
-  caret-color:rgb(0, 0, 0);
+  caret-color: rgb(0, 0, 0);
   color: transparent;
-
-  line-height: 1.5;
+  height: 100%;
 `;
 
 const OverlayLine = styled.div<{ fontFamily: string }>`
@@ -129,11 +127,13 @@ const OverlayLine = styled.div<{ fontFamily: string }>`
   top: 0;
   left: 0;
   width: 100%;
+  height: 100%;
   padding: 0.5rem;
   pointer-events: none;
   font-family: ${props => fontFamilyMap[props.fontFamily] || props.fontFamily};
   white-space: pre-wrap;
   line-height: 1.5;
+  min-height: fit-content;
 `;
 
 const WaitingText = styled.div<{ fontFamily: string }>`
@@ -141,12 +141,14 @@ const WaitingText = styled.div<{ fontFamily: string }>`
   top: 0;
   left: 0;
   width: 100%;
+  height: 100%;
   padding: 0.5rem;
   pointer-events: none;
   font-family: ${props => fontFamilyMap[props.fontFamily] || props.fontFamily};
   white-space: pre-wrap;
   line-height: 1.5;
   color: #ccc;
+  min-height: fit-content;
 `;
 
 // 글자 스타일
