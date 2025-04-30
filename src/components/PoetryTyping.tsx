@@ -1158,7 +1158,7 @@ const PoetryTyping: React.FC = () => {
                 ) : (
                   currentPoem?.completedUsers?.map(({ id, comment }, index, array) => (
                     <CommentBubble key={id}>
-                      {completedUserNames[id]} {comment && <span>💭&nbsp;</span>}
+                      {completedUserNames[id]} {comment && <span>💭</span>}&nbsp;&nbsp;
                       {comment && <span className="comment">{comment}</span>}
                       
                     </CommentBubble>
