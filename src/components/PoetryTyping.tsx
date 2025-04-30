@@ -19,7 +19,7 @@ interface Poem {
 // 스타일 정의
 const Container = styled.div`
   max-width: 800px;
-  margin: 1rem auto;
+  margin: 1rem auto 5rem auto;
   padding: 3rem;
   background-color: #fff;
   display: flex;
@@ -30,7 +30,7 @@ const Header = styled.div`
   display: flex;
   justify-content: space-between;
   align-items: top;
-  min-height: 190px;
+  min-height: 170px;
   margin-bottom: 4rem;
 `;
 
@@ -56,30 +56,63 @@ const Author = styled.p`
 
 const ContentArea = styled.div`
   display: flex;
-  gap: 2rem;
+  gap: 3rem;
+  position: relative;
 `;
 
 const LeftColumn = styled.div`
   flex: 1;
   display: flex;
   flex-direction: column;
-
   align-items: flex-start;
+  margin-top: 25px;
 `;
 
 const RightColumn = styled.div`
   flex: 3;
+  display: flex;
+  gap: 2rem;
+  flex-direction: column;
+  position: relative;
 `;
 
 const TypingArea = styled.div`
-  min-height: 300px;
+  margin-top: 10px;
+  flex: 1;
+  position: relative;
+  height: calc(100vh - 300px);
+  overflow-y: auto;
+  scroll-behavior: smooth;
+  background: #fff;
+  
+  &::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 4px;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background: #ddd;
+    border-radius: 4px;
+  }
+
+  &::-webkit-scrollbar-thumb:hover {
+    background: #ccc;
+  }
 `;
 
 const LineContainer = styled.div`
   position: relative;
-  margin-bottom: 1rem;
+  margin-bottom: 0.5rem;
   min-height: fit-content;
   font-size: 1.2rem;
+  line-height: 1.5;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
 `;
 
 // 폰트 ID를 실제 폰트 패밀리 이름에 매핑하는 객체 추가
@@ -99,17 +132,19 @@ const BaseLine = styled.div<{ fontFamily: string }>`
   visibility: hidden;
   font-size: 1.2rem;
   white-space: pre-wrap;
-  min-height: fit-content;
+  word-break: break-all;
   width: 100%;
   padding: 0.5rem;
   line-height: 1.5;
+  box-sizing: border-box;
+  min-height: 2.5rem;
 `;
 
-const InputLine = styled.input<{ fontFamily: string }>`
+const InputLine = styled.textarea<{ fontFamily: string }>`
   width: 100%;
   padding: 0.5rem;
   font-size: 1.2rem;
-  font-weight: 600; 
+  font-weight: 600;
   border: none;
   background-color: transparent;
   outline: none;
@@ -119,7 +154,13 @@ const InputLine = styled.input<{ fontFamily: string }>`
   font-family: ${props => fontFamilyMap[props.fontFamily] || props.fontFamily};
   caret-color: rgb(0, 0, 0);
   color: transparent;
+  line-height: 1.5;
   height: 100%;
+  resize: none;
+  overflow: hidden;
+  white-space: pre-wrap;
+  word-break: break-all;
+  box-sizing: border-box;
 `;
 
 const OverlayLine = styled.div<{ fontFamily: string }>`
@@ -132,8 +173,9 @@ const OverlayLine = styled.div<{ fontFamily: string }>`
   pointer-events: none;
   font-family: ${props => fontFamilyMap[props.fontFamily] || props.fontFamily};
   white-space: pre-wrap;
+  word-break: break-all;
   line-height: 1.5;
-  min-height: fit-content;
+  box-sizing: border-box;
 `;
 
 const WaitingText = styled.div<{ fontFamily: string }>`
@@ -146,9 +188,10 @@ const WaitingText = styled.div<{ fontFamily: string }>`
   pointer-events: none;
   font-family: ${props => fontFamilyMap[props.fontFamily] || props.fontFamily};
   white-space: pre-wrap;
+  word-break: break-all;
   line-height: 1.5;
   color: #ccc;
-  min-height: fit-content;
+  box-sizing: border-box;
 `;
 
 // 글자 스타일
@@ -156,7 +199,7 @@ const Char = styled.span<{ status: 'correct' | 'incorrect' | 'waiting' | 'compos
   ${props => {
     switch (props.status) {
       case 'correct':
-        return css`color: #000;`;
+        return css`color: rgb(63, 63, 63);`;
       case 'incorrect':
         return css`color: #ff3333;`;
       case 'waiting':
@@ -169,19 +212,35 @@ const Char = styled.span<{ status: 'correct' | 'incorrect' | 'waiting' | 'compos
   }}
 `;
 
-const ProgressBar = styled.div`
-  width: 100%;
+const ProgressToast = styled.div`
+  position: fixed;
+  bottom: 50px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 700px;
+  background-color: #fff;
+  border-radius: 30px;
+  box-shadow: 0 4px 6px rgba(115, 115, 115, 0.1);
+  color: white;
+ 
+  display: flex;
+  align-items: center;
+  z-index: 10;
+`;
+
+const ProgressBarContainer = styled.div`
+  flex: 1;
   height: 4px;
   background-color: #f5f5f5;
-  margin-bottom: 2rem;
+  opacity: 0.3;
   border-radius: 2px;
   overflow: hidden;
 `;
 
-const Progress = styled.div<{ width: number }>`
-  height: 100%;
+const ProgressBar = styled.div<{ width: number }>`
   width: ${props => `${props.width}%`};
-  background-color: #000;
+  height: 100%;
+  background-color: rgb(73, 92, 75);
   transition: width 0.4s ease;
   border-radius: 2px;
 `;
@@ -510,7 +569,7 @@ const PoetryTyping: React.FC = () => {
   const [activeLineIndex, setActiveLineIndex] = useState(0);
   const [lineInputs, setLineInputs] = useState<string[]>([]);
   const [composingLine, setComposingLine] = useState<number | null>(null);
-  const lineRefs = useRef<Array<RefObject<HTMLInputElement>>>([]);
+  const lineRefs = useRef<Array<RefObject<HTMLTextAreaElement>>>([]);
   const { currentUser } = useAuth();
   const [completedUserNames, setCompletedUserNames] = useState<{ [key: string]: string }>({});
   const [showAllCompletedToast, setShowAllCompletedToast] = useState(false);
@@ -518,9 +577,25 @@ const PoetryTyping: React.FC = () => {
   const [comment, setComment] = useState('');
   const [isCompleted, setIsCompleted] = useState(false);
   const POEM_COUNT = 20; 
+  const [isSticky, setIsSticky] = useState(false);
+  const progressWrapperRef = useRef<HTMLDivElement>(null);
+  const rightColumnRef = useRef<HTMLDivElement>(null);
+  const [toastPosition, setToastPosition] = useState({ left: '0', width: '100%' });
+  const typingAreaRef = useRef<HTMLDivElement>(null);
 
+  useEffect(() => {
+    const handleResize = () => {
+      if (rightColumnRef.current) {
+        const width = rightColumnRef.current.offsetWidth;
+        document.documentElement.style.setProperty('--right-column-width', `${width}px`);
+      }
+    };
 
-  // 시 목록 가져오기
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   useEffect(() => {
     const fetchPoems = async () => {
       try {
@@ -585,7 +660,6 @@ const PoetryTyping: React.FC = () => {
     fetchPoems();
   }, []);
 
-  // 시 목록이 업데이트되면 자동으로 시를 불러옵니다
   useEffect(() => {
     console.log('시 목록 업데이트:', poems);
     if (poems.length > 0 && !currentPoem) {
@@ -593,154 +667,144 @@ const PoetryTyping: React.FC = () => {
     }
   }, [poems]);
 
-  // refs 초기화
   useEffect(() => {
     if (currentPoem) {
       const lines = currentPoem.content.split('\n');
-      lineRefs.current = lines.map(() => createRef<HTMLInputElement>());
+      lineRefs.current = lines.map(() => createRef<HTMLTextAreaElement>());
     }
   }, [currentPoem]);
 
   const poemLines = currentPoem?.content.split('\n') || [];
 
-  // 모든 줄이 정확히 입력되었는지 확인하고 축하 메시지 표시
   useEffect(() => {
-    console.log('라인 입력 상태:', lineInputs);
     if (!currentPoem || showCompletion || isCompleted) return;
-  
-    const meaningfulLines = poemLines
-      .map((line, i) => ({ line: line.trim(), input: (lineInputs[i] || '').trim() }))
-      .filter(({ line }) => line !== '');
-  
-    if (meaningfulLines.length === 0 || meaningfulLines.length !== poemLines.filter(l => l.trim() !== '').length) {
-      console.log('아직 미완성: 의미 있는 줄 수가 일치하지 않음');
-      return;
-    }
-  
+
+    // 빈 줄을 제외한 실제 시 내용이 있는 줄만 비교
+    const meaningfulLines = poemLines.map((line, i) => ({
+      index: i,
+      line: line.replace(/\s+/g, ' ').trim(),
+      input: (lineInputs[i] || '').replace(/\s+/g, ' ').trim()
+    })).filter(({ line }) => line !== '');
+
+    console.log('의미있는 줄 검사:', meaningfulLines.map(l => ({
+      index: l.index,
+      line: l.line,
+      input: l.input,
+      isMatch: l.line === l.input
+    })));
+
+    // 모든 줄이 정확히 일치하는지 확인
     const allCorrect = meaningfulLines.every(({ line, input }) => line === input);
-  
-    if (allCorrect) {
+    
+    console.log('완성 체크:', {
+      totalLines: poemLines.length,
+      meaningfulLines: meaningfulLines.length,
+      allCorrect,
+      lineInputs
+    });
+
+    if (allCorrect && meaningfulLines.length > 0) {
       console.log('모든 줄이 정확히 입력됨, 완료 처리 시작');
       handleCompletion();
     }
   }, [lineInputs, poemLines, currentPoem, showCompletion, isCompleted]);
-  
-  // 라인 입력 핸들러
+
+  // 자동 스크롤 함수 수정
+  const checkAndScroll = (index: number) => {
+    requestAnimationFrame(() => {
+      const lineElement = lineRefs.current[index]?.current;
+      if (!lineElement) return;
+
+      // viewport 기준으로 현재 입력 라인의 위치 계산
+      const lineRect = lineElement.getBoundingClientRect();
+      const viewportHeight = window.innerHeight;
+
+      // 현재 입력 라인이 viewport 기준으로 어디에 있는지 계산 (0~1 사이의 값)
+      const linePositionInViewport = lineRect.top / viewportHeight;
+
+      // 입력 라인이 viewport의 70% 아래에 있으면 스크롤
+      if (linePositionInViewport > 0.7) {
+        // 입력 라인을 viewport의 30% 위치로 스크롤
+        const targetPosition = viewportHeight * 0.3;
+        const scrollAmount = window.scrollY + (lineRect.top - targetPosition);
+
+        window.scrollTo({
+          top: scrollAmount,
+          behavior: 'smooth'
+        });
+      }
+    });
+  };
+
+  // handleLineInput 함수 수정
   const handleLineInput = (index: number, value: string) => {
     const newLineInputs = [...lineInputs];
     newLineInputs[index] = value;
     setLineInputs(newLineInputs);
     
-    // 진행률 업데이트
     updateProgressSimple(newLineInputs);
+    checkAndScroll(index);
     
-    // 마지막 줄이고, 마지막 글자가 일치하면 완료 처리
     if (index === poemLines.length - 1) {
-      const targetLine = poemLines[index];
-      // 마지막 글자까지 입력했는지 확인
-      if (value.length >= targetLine.length) {
-        // 모든 줄이 충분히 입력되었는지 확인
-        const allLinesHaveInput = newLineInputs.every((input, i) => {
-          const line = poemLines[i] || '';
-          return input && input.length >= line.length;
-        });
-        
-        if (allLinesHaveInput && !showCompletion) {
-          console.log('완료 조건 충족!');
-          setTimeout(() => {
-            handleCompletion();
-          }, 300);
-        }
+      const isComplete = checkCompletion(newLineInputs, poemLines);
+      if (isComplete && !showCompletion) {
+        handleCompletion();
       }
     }
   };
-  
-  // 간단한 진행률 계산 함수
-  const updateProgressSimple = (inputs: string[] = lineInputs) => {
-    if (!currentPoem) return;
-    
-    // 전체 라인 수
-    const totalLines = poemLines.length;
-    if (totalLines === 0) return;
-    
-    // 각 라인별 진행률 계산
-    let totalProgress = 0;
-    
-    poemLines.forEach((line, idx) => {
-      const input = inputs[idx] || '';
-      const lineProgress = Math.min(input.length / Math.max(line.length, 1), 1);
-      totalProgress += lineProgress;
-    });
-    
-    // 전체 진행률 계산 (0~100%)
-    const avgProgress = (totalProgress / totalLines) * 100;
-    setProgress(Math.min(avgProgress, 100));
-  };
 
-  // 키 입력 핸들러
+  // handleKeyDown 함수 수정
   const handleKeyDown = (e: React.KeyboardEvent, index: number) => {
-    // 빈 줄 자동 건너뛰기
     const currentLine = poemLines[index] || '';
     if (currentLine.trim() === '' && e.key !== 'Backspace') {
       if (index < poemLines.length - 1) {
         setTimeout(() => {
           setActiveLineIndex(index + 1);
           lineRefs.current[index + 1]?.current?.focus();
+          checkAndScroll(index + 1);
         }, 10);
         return;
       }
     }
     
-    // 엔터 키를 눌렀을 때
     if (e.key === 'Enter' && !isComposing) {
       e.preventDefault();
       
-      // 다음 라인으로 이동 (마지막 라인이 아닌 경우)
       if (index < poemLines.length - 1) {
-        // 다음 내용이 있는 줄 찾기 (항상 빈 줄은 건너뛰기)
         let nextContentIndex = index + 1;
         
-        // 바로 다음 줄이 빈 줄이면 그 다음 내용이 있는 줄 찾기
-        if (poemLines[nextContentIndex].trim() === '') {
-          // 내용이 있는 다음 줄 찾기
-          while (
-            nextContentIndex < poemLines.length - 1 && 
-            poemLines[nextContentIndex].trim() === ''
-          ) {
-            nextContentIndex++;
-          }
+        while (
+          nextContentIndex < poemLines.length - 1 && 
+          poemLines[nextContentIndex].trim() === ''
+        ) {
+          nextContentIndex++;
         }
         
-        // 다음 내용이 있는 줄로 이동
         setActiveLineIndex(nextContentIndex);
         setTimeout(() => {
           lineRefs.current[nextContentIndex]?.current?.focus();
+          checkAndScroll(nextContentIndex);
         }, 0);
       } 
-      // 마지막 라인에서 엔터 누르면 강제로 완료 처리
       else if (!showCompletion) {
         handleCompletion();
       }
     }
     
-    // 백스페이스 키를 눌렀을 때 이전 줄로 이동
     if (e.key === 'Backspace' && !isComposing) {
       const currentInput = lineInputs[index] || '';
       
-      // 현재 입력이 비어있고, 첫 번째 줄이 아닌 경우
       if (currentInput === '' && index > 0) {
-        e.preventDefault(); // 백스페이스 키의 기본 동작 방지
+        e.preventDefault();
         
-        // 이전 라인으로 이동
         setActiveLineIndex(index - 1);
         
-        // 이전 라인으로 포커스 이동
         setTimeout(() => {
           const prevInput = lineRefs.current[index - 1]?.current;
           if (prevInput) {
             prevInput.focus();
+            checkAndScroll(index - 1);
             
-            // 입력 값의 길이가 있는 경우 커서를 맨 끝으로 이동
             const inputLength = lineInputs[index - 1]?.length || 0;
             if (inputLength > 0) {
               prevInput.setSelectionRange(inputLength, inputLength);
@@ -751,24 +815,20 @@ const PoetryTyping: React.FC = () => {
     }
   };
 
-  // 조합 시작
   const handleCompositionStart = (index: number) => {
     setIsComposing(true);
     setComposingLine(index);
   };
 
-  // 조합 종료
   const handleCompositionEnd = () => {
     setIsComposing(false);
     setComposingLine(null);
   };
 
-  // 폰트 변경 핸들러
   const handleFontChange = (fontId: string) => {
     console.log('폰트 변경:', fontId);
     setSelectedFont(fontId);
   };
-
 
   const getRandomPoemId = () => {
     const randomNumber = Math.floor(Math.random() * POEM_COUNT) + 1; // 1 ~ POEM_COUNT
@@ -776,13 +836,11 @@ const PoetryTyping: React.FC = () => {
   };
   
   const loadRandomPoem = async () => {
-     // URL이 /poem/id 형태인지 확인
-     const pathParts = window.location.pathname.split('/');
-     if (pathParts[1] === 'poem' && pathParts[2]) {
-       // 홈으로 이동
-       window.location.href = '/';
-       return;
-     }
+    const pathParts = window.location.pathname.split('/');
+    if (pathParts[1] === 'poem' && pathParts[2]) {
+      window.location.href = '/';
+      return;
+    }
 
     const randomId = getRandomPoemId();
     try {
@@ -805,8 +863,6 @@ const PoetryTyping: React.FC = () => {
     }
   };
   
-
-  // 라인 렌더링
   const renderLine = (line: string, index: number) => {
     const input = lineInputs[index] || '';
     const isActive = index === activeLineIndex;
@@ -833,31 +889,25 @@ const PoetryTyping: React.FC = () => {
           fontFamily={selectedFont}
         />
         
-        {/* 대기 중인 텍스트 (회색 글자) */}
         <WaitingText fontFamily={selectedFont}>
           {line}
         </WaitingText>
         
-        {/* 입력한 텍스트 (검정/빨강 글자) */}
         <OverlayLine fontFamily={selectedFont}>
           {line.substring(0, input.length).split('').map((char, i) => {
             const currentChar = input[i];
             const targetChar = line[i];
             const nextChar = line[i + 1];
               
-            // 현재 조합 중 + 마지막 입력 글자일 때
             if (isComposing && i === input.length - 1) {
-              // 1. 초성만 입력된 경우: 목표 글자의 초성과 일치해야 검은색
               if (isKoreanInitial(currentChar)) {
                 const targetInitial = getKoreanInitial(targetChar);
                 return <Char key={i} status={currentChar === targetInitial ? 'correct' : 'incorrect'}>{currentChar}</Char>;
               }
                 
-              // 2. 조합 중인 글자 처리 - 목표 글자와 초성+중성이 일치하는지 확인
               const currentCode = currentChar.charCodeAt(0);
               const targetCode = targetChar.charCodeAt(0);
                 
-              // 둘 다 완성형 한글인 경우 초성+중성 비교
               if (currentCode >= 0xAC00 && currentCode <= 0xD7A3 &&
                   targetCode >= 0xAC00 && targetCode <= 0xD7A3) {
                 if (hasSameInitialAndMedial(currentChar, targetChar)) {
@@ -865,22 +915,17 @@ const PoetryTyping: React.FC = () => {
                 }
               }
               
-              // 3. 복합 모음 관계 처리 (예: "우"가 "워"의 부분)
-              // 현재 글자가 목표 글자의 부분인 경우
               if (isPartOfNextChar(currentChar, targetChar)) {
                 return <Char key={i} status="correct">{currentChar}</Char>;
               }
               
-              // 4. 다음 글자의 부분인 경우 (예: "우"가 다음 글자 "워"의 부분)
               if (nextChar && isPartOfNextChar(currentChar, nextChar)) {
                 return <Char key={i} status="correct">{currentChar}</Char>;
               }
                 
-              // 5. 초성과 중성이 목표 글자와 다르면 틀린 것으로 표시
               return <Char key={i} status="incorrect">{currentChar}</Char>;
             }
               
-            // 조합이 완료된 글자는 정확히 일치하는지 확인
             return <Char key={i} status={currentChar === targetChar ? 'correct' : 'incorrect'}>{currentChar}</Char>;
           })}
         </OverlayLine>
@@ -888,7 +933,6 @@ const PoetryTyping: React.FC = () => {
     );
   };
 
-  // 완료 처리 함수
   const handleCompletion = async () => {
     if (showCompletion || isCompleted) return;
     
@@ -896,25 +940,23 @@ const PoetryTyping: React.FC = () => {
     setShowCompletion(true);
     setIsCompleted(true);
     setProgress(100);
+    
   
     if (!currentPoem || !currentUser) return;
     
     try {
 
-      // await addCompletedPoemToUser(currentUser.uid, currentPoem.id);
     } catch (error) {
       console.error('시 완료 저장 중 오류 발생:', error);
     }
   };
 
-  // 사용자 닉네임 가져오기 함수
   const fetchUserNicknames = async (userIds: string[]) => {
     if (!userIds.length) return;
     
     try {
       const nicknames: { [key: string]: string } = {};
       
-      // Promise.all을 사용하여 모든 요청을 병렬로 처리
       await Promise.all(
         userIds.map(async (userId) => {
           if (nicknames[userId]) return;
@@ -935,14 +977,12 @@ const PoetryTyping: React.FC = () => {
     }
   };
 
-  // 시가 로드되면 완료한 사용자 정보 가져오기
   useEffect(() => {
     if (currentPoem?.completedUsers && currentPoem.completedUsers.length > 0) {
       const userIds = currentPoem.completedUsers.map(user => user.id);
       fetchUserNicknames(userIds);
     }
   }, [currentPoem]);
-  
   
 
   const toggleUsers = () => {
@@ -961,7 +1001,6 @@ const PoetryTyping: React.FC = () => {
         user.id === currentUser.uid ? { ...user, comment } : user
       ) || [];
 
-      // 댓글이 없는 경우 현재 유저 추가
       if (!updatedCompletedUsers.some(user => user.id === currentUser.uid)) {
         updatedCompletedUsers.push({ id: currentUser.uid, comment });
       }
@@ -976,9 +1015,10 @@ const PoetryTyping: React.FC = () => {
         };
       });
 
-      setComment(''); // 댓글 초기화
-      setShowCompletion(false); // 토스트 메시지 숨기기
+      setComment('');
+      setShowCompletion(false);
       console.log('토스트바 숨김 처리 완료');
+      setIsUsersOpen(true);
     } catch (error) {
       console.error('댓글 저장 중 오류 발생:', error);
     }
@@ -1004,19 +1044,46 @@ const PoetryTyping: React.FC = () => {
     });
 
     setShowCompletion(false);
-    setComment(''); // 댓글 초기화
+    setComment('');
     console.log('토스트바 숨김 처리 완료');
+    setIsUsersOpen(true);
   };
 
-  // showCompletion 상태 변화 추적
   useEffect(() => {
     console.log('showCompletion 상태:', showCompletion);
   }, [showCompletion]);
 
-  return (
- 
-    <Container>
+  // 완성 체크 함수
+  const checkCompletion = (inputs: string[], lines: string[]): boolean => {
+    const meaningfulPairs = lines.map((line, i) => ({
+      line: line.replace(/\s+/g, ' ').trim(),
+      input: (inputs[i] || '').replace(/\s+/g, ' ').trim()
+    })).filter(({ line }) => line !== '');
+
+    return meaningfulPairs.length > 0 && meaningfulPairs.every(({ line, input }) => line === input);
+  };
+
+  // 진행률 업데이트 함수
+  const updateProgressSimple = (inputs: string[] = lineInputs) => {
+    if (!currentPoem) return;
     
+    const totalLines = poemLines.length;
+    if (totalLines === 0) return;
+    
+    let totalProgress = 0;
+    
+    poemLines.forEach((line, idx) => {
+      const input = inputs[idx] || '';
+      const lineProgress = Math.min(input.length / Math.max(line.length, 1), 1);
+      totalProgress += lineProgress;
+    });
+    
+    const avgProgress = (totalProgress / totalLines) * 100;
+    setProgress(Math.min(avgProgress, 100));
+  };
+
+  return (
+    <Container>
       {showAllCompletedToast && (
         <ToastMessage show={true}>
           모든 시를 타이핑 했어요! 🙊
@@ -1046,7 +1113,6 @@ const PoetryTyping: React.FC = () => {
         </ToastMessage>
       )}
 
-
       <Header>
         {currentPoem && (
           <>
@@ -1074,12 +1140,10 @@ const PoetryTyping: React.FC = () => {
                   >
                     {font.name}
                   </FontChip>
-                  {/* 마지막이 아니라면 구분자 추가 */}
                   {index < fontOptions.length - 1 && <span style={{ margin: '0' , color: '#888', fontSize: '0.8rem'}}>/</span>}
                 </React.Fragment>
               ))}
             </FontSelectorContainer>
-
 
           <CompletedUsersContainer>
             <CompletedUsersTitle onClick={toggleUsers}>
@@ -1094,9 +1158,9 @@ const PoetryTyping: React.FC = () => {
                 ) : (
                   currentPoem?.completedUsers?.map(({ id, comment }, index, array) => (
                     <CommentBubble key={id}>
-                      {completedUserNames[id]} {comment && <span>💭 </span>}
+                      {completedUserNames[id]} {comment && <span>💭&nbsp;</span>}
                       {comment && <span className="comment">{comment}</span>}
-                      {index < array.length - 1 ? ',  ' : ''}
+                      
                     </CommentBubble>
                   ))
                 )}
@@ -1105,18 +1169,20 @@ const PoetryTyping: React.FC = () => {
           </CompletedUsersContainer>
         </LeftColumn>
 
-        <RightColumn>
-          <ProgressBar>
-            <Progress width={progress} />
-          </ProgressBar>
+        <RightColumn ref={rightColumnRef}>
+          <ProgressToast>
+            <ProgressBarContainer>
+              <ProgressBar width={progress} />
+            </ProgressBarContainer>
+          </ProgressToast>
 
-          <TypingArea>
+          <TypingArea ref={typingAreaRef}>
             {poemLines.map((line, index) => renderLine(line, index))}
           </TypingArea>
 
-          
         </RightColumn>
       </ContentArea>
+
     </Container>
   );
 };
