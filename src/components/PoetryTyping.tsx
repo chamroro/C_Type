@@ -914,18 +914,20 @@ const PoetryTyping: React.FC = () => {
     try {
       const nicknames: { [key: string]: string } = {};
       
-      for (const userId of userIds) {
-        // 이미 가져온 사용자는 건너뛰기
-        if (nicknames[userId]) continue;
-        
-        const userDoc = await getDoc(doc(db, 'users', userId));
-        if (userDoc.exists()) {
-          const userData = userDoc.data();
-          nicknames[userId] = userData.nickname || userData.displayName || userId.substring(0, 8);
-        } else {
-          nicknames[userId] = userId.substring(0, 8);
-        }
-      }
+      // Promise.all을 사용하여 모든 요청을 병렬로 처리
+      await Promise.all(
+        userIds.map(async (userId) => {
+          if (nicknames[userId]) return;
+          
+          const userDoc = await getDoc(doc(db, 'users', userId));
+          if (userDoc.exists()) {
+            const userData = userDoc.data();
+            nicknames[userId] = userData.nickname || userData.displayName || userId.substring(0, 8);
+          } else {
+            nicknames[userId] = userId.substring(0, 8);
+          }
+        })
+      );
       
       setCompletedUserNames(nicknames);
     } catch (error) {
