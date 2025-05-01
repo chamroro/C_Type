@@ -1,13 +1,9 @@
-import React, { useState, useEffect, useRef, createRef, RefObject } from 'react';
+import { useState, useEffect } from 'react';
 import styled, { createGlobalStyle } from 'styled-components';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
-import Login from './components/Auth/Login';
-import Signup from './components/Auth/Signup';
 import Navigation from './components/Navigation';
 import PoetryTyping from './components/PoetryTyping';
 import AdminPoems from './components/Admin/AdminPoems';
-import { collection, getDocs } from 'firebase/firestore';
-import { db } from './firebase/config';
 import MobileWarning from './components/MobileWarning';
 import { BrowserRouter as Router, Route, Switch } from 'react-router-dom';
 import LoginBubble from './components/LoginBubble';
@@ -144,7 +140,6 @@ const AppContent = () => {
   useEffect(() => {
     const checkPoems = async () => {
       if (isInitialized) return;
-      
       try {
         setPoemsLoaded(true);
       } catch (error) {
@@ -160,15 +155,6 @@ const AppContent = () => {
   // 렌더링할 컴포넌트 결정
   let content;
   switch (path) {
-    case '/login':
-      content = <Login />;
-      break;
-    case '/signup':
-      content = <Signup />;
-      break;
-    case '/poetry-typing':
-      content = <PoetryTyping />;
-      break;
     case '/admin':
       content = <AdminPoems />;
       break;

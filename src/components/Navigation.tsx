@@ -4,8 +4,7 @@ import { useState, useRef, useEffect } from 'react';
 import firebase from '../firebase/config';
 import { auth } from '../firebase/config';
 import { db } from '../firebase/config';
-import { useHistory } from 'react-router-dom';
-import { getDoc, doc, setDoc, collection, getDocs, query, orderBy, where } from 'firebase/firestore';
+import { getDoc, doc, setDoc, collection, getDocs, query, where } from 'firebase/firestore';
 
 interface Poem {
   id: string;
@@ -64,8 +63,6 @@ const RightSec = styled.div`
   justify-content: space-between;
 `;
 
-
-
 const PoemList = styled.div`
   display: flex;
   flex-direction: column;
@@ -109,7 +106,6 @@ const PoemTitle = styled.span<{ isCompleted: boolean }>`
 
 const PoemNumber = styled.span`
   min-width: 120px;
-
 `;
 
 const MenuButton = styled.button`
@@ -166,7 +162,6 @@ const UserInfo = styled.div`
 const UserName = styled.span`
   font-size: 1rem;
   color:rgb(0, 0, 0);
-
 `;
 
 const EditIcon = styled.button`
@@ -186,7 +181,6 @@ const EditIcon = styled.button`
 
 const NicknameInput = styled.input`
   font-size: 1rem;
- 
   border: none;
   border-bottom: 1px solid #e0e0e0;
   background: transparent;
@@ -205,11 +199,9 @@ const NicknameInput = styled.input`
 const ButtonsContainer = styled.div`
   display: flex;
   gap: 4px;
-  
 `;
 
 const ActionButton = styled.button`
-
   background: none;
   border: none;
   cursor: pointer;
@@ -258,8 +250,7 @@ const CancelIcon = () => (
   </svg>
 );
 
-// 관리자 아이디 목록
-const ADMIN_IDS = ['O8rZTec7RnX3jDBkR7NMuW7gEF93'];
+const ADMIN_IDS = process.env.REACT_APP_ADMIN_IDS?.split(',') || [];
 
 const Modal = styled.div`
   position: fixed;
@@ -327,7 +318,7 @@ const ModalButton = styled.button`
 `;
 
 const Navigation = () => {
-  const { currentUser, logout, updateNickname } = useAuth();
+  const {currentUser, logout, updateNickname } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
   const [nickname, setNickname] = useState('');
   const [isOpen, setIsOpen] = useState(false);
@@ -337,7 +328,6 @@ const Navigation = () => {
   const nicknameInputRef = useRef<HTMLInputElement>(null);
   const userNameRef = useRef<HTMLSpanElement>(null);
   const [showNicknameModal, setShowNicknameModal] = useState(false);
-
   
   // 사용자 정보 및 완료한 시 목록 가져오기
   useEffect(() => {
@@ -562,13 +552,9 @@ const Navigation = () => {
       <MenuButton onClick={() => setIsOpen(true)}>
         ✍🏻
       </MenuButton>
-
       <Overlay isOpen={isOpen}>
         <CloseButton onClick={() => setIsOpen(false)}>×</CloseButton>
-        
         <OverlayContent>
-         
-          
           <LeftSec>
             <PoemList>
               {poems.map((poem) => {
@@ -628,7 +614,6 @@ const Navigation = () => {
                   {isAdmin && (
                     <NavButton as="a" href="/admin">관리자</NavButton>
                   )}
-
                 </>
               ) : (
                 <div>
@@ -640,7 +625,6 @@ const Navigation = () => {
           </RightSec>
         </OverlayContent>
       </Overlay>
-
       {showNicknameModal && (
         <Modal>
           <ModalContent>

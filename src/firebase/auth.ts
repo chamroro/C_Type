@@ -1,7 +1,7 @@
 import firebase from './config';
 import { auth, db } from './config';
 
-// 사용자 인터페이스 확장: 작성한 시 번호 배열 추가
+// 사용자 인터페이스
 export interface UserData {
   uid: string;
   email: string;
@@ -12,97 +12,8 @@ export interface UserData {
   lastLoginAt: any;
 }
 
-
 // 사용자 컬렉션 참조
 const usersCollection = db.collection('users');
-
-/**
- * 이메일로 회원가입
- */
-export const registerWithEmail = async (
-  email: string, 
-  password: string, 
-  displayName: string
-): Promise<UserData> => {
-  try {
-    // Firebase 인증으로 사용자 생성
-    const userCredential = await auth.createUserWithEmailAndPassword(email, password);
-    const user = userCredential.user;
-    
-    if (!user) {
-      throw new Error('사용자 생성에 실패했습니다');
-    }
-    
-    // 사용자 프로필 업데이트
-    await user.updateProfile({ displayName });
-    
-    // 초기 사용자 데이터 생성
-    const userData: UserData = {
-      uid: user.uid,
-      email: user.email || email,
-      displayName: displayName,
-      nickname: displayName, // 기본값으로 displayName 사용
-      photoURL: user.photoURL || '',
-      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-      lastLoginAt: firebase.firestore.FieldValue.serverTimestamp(),
-    };
-    
-    // Firestore에 사용자 정보 저장
-    await usersCollection.doc(user.uid).set(userData);
-    
-    return userData;
-  } catch (error) {
-    console.error('회원가입 오류:', error);
-    throw error;
-  }
-};
-
-/**
- * 이메일로 로그인
- */
-export const loginWithEmail = async (
-  email: string, 
-  password: string
-): Promise<UserData> => {
-  try {
-    const userCredential = await auth.signInWithEmailAndPassword(email, password);
-    const user = userCredential.user;
-    
-    if (!user) {
-      throw new Error('로그인에 실패했습니다');
-    }
-    
-    // 사용자 문서 참조
-    const userDocRef = usersCollection.doc(user.uid);
-    const userDoc = await userDocRef.get();
-    
-    if (userDoc.exists) {
-      // 마지막 로그인 시간 업데이트
-      await userDocRef.update({
-        lastLoginAt: firebase.firestore.FieldValue.serverTimestamp()
-      });
-      
-      return userDoc.data() as UserData;
-    } else {
-      // 사용자 문서가 없는 경우 생성
-      const userData: UserData = {
-        uid: user.uid,
-        email: user.email || email,
-        displayName: user.displayName || email.split('@')[0],
-        nickname: user.displayName || email.split('@')[0],
-        photoURL: user.photoURL || '',
-        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-        lastLoginAt: firebase.firestore.FieldValue.serverTimestamp(),
-      };
-      
-      await userDocRef.set(userData);
-      return userData;
-    }
-  } catch (error) {
-    console.error('로그인 오류:', error);
-    throw error;
-  }
-};
 
 /**
  * 구글 로그인
@@ -212,52 +123,46 @@ export const onAuthChange = (
 };
 
 /**
- * 닉네임 중복 확인 함수
+ * 닉네임 중복 체크
  */
 export const checkNicknameExists = async (nickname: string, currentUserId?: string): Promise<boolean> => {
   try {
-    // 닉네임으로 사용자 쿼리
-    const nicknameQuery = await usersCollection.where('nickname', '==', nickname).get();
+    const snapshot = await usersCollection.where('nickname', '==', nickname).get();
     
-    // 닉네임이 이미 존재하는지 확인
-    // 현재 사용자 ID가 주어진 경우, 자기 자신은 제외
-    if (!nicknameQuery.empty) {
-      // 현재 사용자의 ID가 제공된 경우 자신은 제외
-      if (currentUserId) {
-        return nicknameQuery.docs.some(doc => doc.id !== currentUserId);
-      }
-      return true; // 중복된 닉네임 존재
+    if (snapshot.empty) {
+      return false;
     }
     
-    return false; // 중복된 닉네임 없음
+    // 현재 사용자의 닉네임인 경우는 중복으로 처리하지 않음
+    if (currentUserId) {
+      return snapshot.docs.some(doc => doc.id !== currentUserId);
+    }
+    
+    return true;
   } catch (error) {
-    console.error('닉네임 중복 확인 오류:', error);
+    console.error('닉네임 중복 체크 오류:', error);
     throw error;
   }
 };
 
-// 닉네임 업데이트 함수
+/**
+ * 닉네임 업데이트
+ */
 export const updateUserNickname = async (
   userId: string,
   nickname: string
 ): Promise<void> => {
   try {
-    // 닉네임 중복 확인
-    const nicknameExists = await checkNicknameExists(nickname, userId);
-    
-    if (nicknameExists) {
-      throw new Error('이미 사용 중인 닉네임입니다. 다른 닉네임을 선택해주세요.');
+    // 닉네임 중복 체크
+    const exists = await checkNicknameExists(nickname, userId);
+    if (exists) {
+      throw new Error('이미 사용 중인 닉네임입니다.');
     }
     
-    // 사용자 문서 참조 업데이트
-    const userDocRef = usersCollection.doc(userId);
-    
-    // 닉네임 필드만 업데이트
-    await userDocRef.update({
+    // 닉네임 업데이트
+    await usersCollection.doc(userId).update({
       nickname: nickname
     });
-    
-    console.log('닉네임 업데이트 성공:', nickname);
   } catch (error) {
     console.error('닉네임 업데이트 오류:', error);
     throw error;

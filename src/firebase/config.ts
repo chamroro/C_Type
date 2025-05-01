@@ -3,10 +3,6 @@ import firebase from 'firebase/compat/app';
 import 'firebase/compat/auth';
 import 'firebase/compat/firestore';
 
-// 환경 변수 디버깅
-console.log('FIREBASE API KEY:', process.env.REACT_APP_FIREBASE_API_KEY?.substring(0, 5) + '...');
-console.log('FIREBASE PROJECT ID:', process.env.REACT_APP_FIREBASE_PROJECT_ID);
-
 // 파이어베이스 설정
 const firebaseConfig = {
   apiKey: process.env.REACT_APP_FIREBASE_API_KEY,

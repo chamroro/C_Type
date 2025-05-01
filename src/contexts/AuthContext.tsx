@@ -1,7 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { 
-  registerWithEmail, 
-  loginWithEmail, 
   loginWithGoogle, 
   signOut, 
   onAuthChange,
@@ -15,8 +13,6 @@ interface AuthContextType {
   currentUser: UserData | null;
   loading: boolean;
   error: string | null;
-  register: (email: string, password: string, displayName: string) => Promise<void>;
-  login: (email: string, password: string) => Promise<void>;
   loginWithGoogle: () => Promise<void>;
   logout: () => Promise<void>;
   clearError: () => void;
@@ -51,65 +47,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // 오류 초기화
   const clearError = () => setError(null);
 
-  // 회원가입 함수
-  const register = async (email: string, password: string, displayName: string) => {
-    try {
-      clearError();
-      const userData = await registerWithEmail(email, password, displayName);
-      setCurrentUser(userData);
-      setIsNewUser(true);
-      setShowNicknameModal(true);
-    } catch (err: any) {
-      let errorMessage = '회원가입에 실패했습니다.';
-      
-      if (err.code === 'auth/email-already-in-use') {
-        errorMessage = '이미 사용 중인 이메일입니다.';
-      } else if (err.code === 'auth/invalid-email') {
-        errorMessage = '유효하지 않은 이메일 형식입니다.';
-      } else if (err.code === 'auth/weak-password') {
-        errorMessage = '비밀번호가 너무 약합니다.';
-      }
-      
-      setError(errorMessage);
-      throw err;
-    }
-  };
-
-  // 로그인 함수
-  const login = async (email: string, password: string) => {
-    try {
-      clearError();
-      const userData = await loginWithEmail(email, password);
-      setCurrentUser(userData);
-      
-      // 닉네임이 없는 경우에만 모달 표시
-      const shouldShowModal = !userData.nickname || userData.nickname.trim() === '';
-      setIsNewUser(shouldShowModal);
-      
-      if (shouldShowModal) {
-        setTimeout(() => {
-          setShowNicknameModal(true);
-        }, 500); // 약간의 지연을 두어 UI가 준비된 후 모달 표시
-      } else {
-        // 닉네임이 이미 있으면 홈페이지로 리다이렉트
-        window.location.href = '/';
-      }
-    } catch (err: any) {
-      let errorMessage = '로그인에 실패했습니다.';
-      
-      if (err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password') {
-        errorMessage = '이메일 또는 비밀번호가 올바르지 않습니다.';
-      } else if (err.code === 'auth/invalid-email') {
-        errorMessage = '유효하지 않은 이메일 형식입니다.';
-      } else if (err.code === 'auth/user-disabled') {
-        errorMessage = '계정이 비활성화되었습니다.';
-      }
-      
-      setError(errorMessage);
-      throw err;
-    }
-  };
-
   /**
    * 구글 계정으로 로그인
    */
@@ -133,17 +70,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       setCurrentUser(userData);
       
-      // 새 사용자이면서 닉네임이 없는 경우에만 모달 표시
-      // 이미 닉네임이 설정된 사용자는 모달 표시하지 않음
+      // 새 사용자이거나 닉네임이 없는 경우에만 모달 표시
       const shouldShowModal = (isFirstLogin || !userData.nickname) && (!userData.nickname || userData.nickname.trim() === '');
       setIsNewUser(shouldShowModal);
       
       if (shouldShowModal) {
         setTimeout(() => {
           setShowNicknameModal(true);
-        }, 500); // 약간의 지연을 두어 UI가 준비된 후 모달 표시
+        }, 500);
       } else {
-        // 모달을 표시하지 않는 경우 홈페이지로 리다이렉트
         window.location.href = '/';
       }
     } catch (error: any) {
@@ -188,11 +123,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
       
       setNicknameLoading(true);
-      console.log('닉네임 업데이트 시작:', nickname);
-      
-      // 닉네임 업데이트 함수 호출
       await updateUserNickname(currentUser.uid, nickname);
-      console.log('Firebase 닉네임 업데이트 완료');
       
       // 현재 사용자 정보 업데이트
       setCurrentUser({
@@ -200,25 +131,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         nickname: nickname
       });
       
-      console.log('사용자 상태 업데이트 완료');
-      
-      // 모달 닫기
       setShowNicknameModal(false);
-      // 새 사용자 상태 해제
-      setIsNewUser(false);
-      
-      // 성공 로그
-      console.log('닉네임 업데이트 완료:', nickname);
-      
-      
+      window.location.href = '/';
     } catch (error: any) {
       console.error('닉네임 업데이트 실패:', error);
-      const errorMessage = error.message || '알 수 없는 오류';
-      console.error('에러 상세 정보:', errorMessage);
-      setError('닉네임 업데이트에 실패했습니다: ' + errorMessage);
-      
-      // 사용자에게 알림
-      alert('닉네임 업데이트에 실패했습니다. 다시 시도해주세요.');
+      setError('닉네임 업데이트에 실패했습니다.');
     } finally {
       setNicknameLoading(false);
     }
@@ -226,24 +143,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // 인증 상태 변경 감지
   useEffect(() => {
-    setLoading(true);
-    
     const unsubscribe = onAuthChange((user) => {
       setCurrentUser(user);
       setLoading(false);
     });
 
-    // 정리 함수
     return unsubscribe;
   }, []);
 
-  // 컨텍스트 값
   const value = {
     currentUser,
     loading,
     error,
-    register,
-    login,
     loginWithGoogle: loginWithGoogleAuth,
     logout,
     clearError,
@@ -256,24 +167,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   return (
     <AuthContext.Provider value={value}>
-      {!loading && (
-        <>
-          {children}
-          
-          {/* 닉네임 설정 모달 */}
-          {showNicknameModal && currentUser && (
-            <NicknameModal 
-              isOpen={showNicknameModal}
-              initialNickname={currentUser.nickname || currentUser.displayName || ''}
-              onSave={updateNickname}
-              onClose={() => {
-                setShowNicknameModal(false);
-                setIsNewUser(false);
-              }}
-              isLoading={nicknameLoading}
-            />
-          )}
-        </>
+      {children}
+      {showNicknameModal && (
+        <NicknameModal
+          isOpen={showNicknameModal}
+          onClose={() => setShowNicknameModal(false)}
+          onSubmit={updateNickname}
+          isLoading={nicknameLoading}
+          isNewUser={isNewUser}
+        />
       )}
     </AuthContext.Provider>
   );
