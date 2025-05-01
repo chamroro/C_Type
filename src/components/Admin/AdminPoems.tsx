@@ -14,10 +14,10 @@ import {
   setDoc
 } from 'firebase/firestore';
 import { db } from '../../firebase/config';
+import CountUp from 'react-countup';
 
-// 관리자 아이디 목록 (임시로 이 방식 사용, 실제로는 Firestore에 권한 정보를 저장하는 것이 좋음)
-const ADMIN_IDS = ['O8rZTec7RnX3jDBkR7NMuW7gEF93']; // 관리자 권한을 부여할 사용자 UID 입력
-
+// 관리자 아이디 설정
+const ADMIN_ID = process.env.REACT_APP_ADMIN_ID || '';
 // 시 인터페이스
 interface Poem {
   id?: string;
@@ -49,7 +49,7 @@ const Container = styled.div`
   padding: 2rem;
   background-color: white;
   border-radius: 8px;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+ 
 `;
 
 const Header = styled.div`
@@ -63,20 +63,24 @@ const Title = styled.h1`
   font-size: 1.8rem;
   color: #333;
   margin: 0;
+  font-family: 'Noto Sans KR', sans-serif;
+  font-weight: 900;
+  letter-spacing: -0.05em;
 `;
 
 const Button = styled.button`
-  padding: 0.5rem 1rem;
-  background-color: #4a90e2;
+  padding: 0.3rem 0.7rem;
+  background-color:rgb(44, 71, 101);
   color: white;
   border: none;
   border-radius: 4px;
   cursor: pointer;
-  font-size: 0.9rem;
+  font-size: 0.7rem;
+  font-weight: 700;
   transition: background-color 0.2s;
 
   &:hover {
-    background-color: #357ABD;
+    background-color:rgb(108, 132, 157);
   }
 
   &:disabled {
@@ -86,7 +90,7 @@ const Button = styled.button`
 `;
 
 const DangerButton = styled(Button)`
-  background-color: #e74c3c;
+  background-color:rgb(213, 136, 128);
   
   &:hover {
     background-color: #c0392b;
@@ -129,40 +133,29 @@ const Textarea = styled.textarea`
   resize: vertical;
 `;
 
-const Select = styled.select`
-  width: 100%;
-  padding: 0.75rem;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  font-size: 1rem;
-  background-color: white;
-`;
-
 const Table = styled.table`
   width: 100%;
   border-collapse: collapse;
   margin-top: 1rem;
+  vertical-align: middle;
+  color: rgb(65, 65, 65);
+  font-family: 'Noto Sans KR', sans-serif;
+  font-weight: 700;
 `;
 
 const Th = styled.th`
   text-align: left;
-  padding: 1rem;
+  padding: 0.5rem 1rem;
   border-bottom: 2px solid #eee;
-  color: #555;
+
+
 `;
 
 const Td = styled.td`
-  padding: 1rem;
+  padding: 0.5rem 1rem;
   border-bottom: 1px solid #eee;
-  vertical-align: top;
-`;
 
-const ContentPreview = styled.div`
-  max-height: 100px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: pre-wrap;
-  color: #666;
+  
 `;
 
 const Actions = styled.div`
@@ -186,68 +179,6 @@ const SuccessMessage = styled.div`
   border-radius: 4px;
 `;
 
-const Modal = styled.div`
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background-color: rgba(0, 0, 0, 0.5);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  z-index: 100;
-`;
-
-const ModalContent = styled.div`
-  background-color: white;
-  padding: 2rem;
-  border-radius: 8px;
-  width: 90%;
-  max-width: 600px;
-  max-height: 90vh;
-  overflow-y: auto;
-`;
-
-const ModalHeader = styled.div`
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 1.5rem;
-`;
-
-const ModalTitle = styled.h2`
-  margin: 0;
-  color: #333;
-`;
-
-const CloseButton = styled.button`
-  background: none;
-  border: none;
-  font-size: 1.5rem;
-  cursor: pointer;
-  color: #999;
-  
-  &:hover {
-    color: #333;
-  }
-`;
-
-const CompletedUsersList = styled.div`
-  margin-top: 1rem;
-`;
-
-const UserChip = styled.span`
-  display: inline-block;
-  padding: 0.3rem 0.6rem;
-  margin: 0.2rem;
-  background-color: #e6f2ff;
-  color: #4a90e2;
-  border: 1px solid #4a90e2;
-  border-radius: 16px;
-  font-size: 0.8rem;
-`;
-
 const NoAccessMessage = styled.div`
   text-align: center;
   margin-top: 5rem;
@@ -266,8 +197,7 @@ const StatsContainer = styled.div`
 const StatCard = styled.div`
   background-color: white;
   padding: 1.5rem;
-  border-radius: 8px;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  
   text-align: center;
 `;
 
@@ -279,9 +209,12 @@ const StatNumber = styled.div`
 `;
 
 const StatLabel = styled.div`
-  font-size: 0.9rem;
+  font-size: 0.8rem;
   color: #666;
   line-height: 1.4;
+  font-family: 'Noto Sans KR', sans-serif;
+  font-weight: 700;
+  letter-spacing: -0.05em;
 `;
 
 const AdminPoems: React.FC = () => {
@@ -308,16 +241,17 @@ const AdminPoems: React.FC = () => {
     completedUsers: []
   });
   
-  // 완료한 사용자 목록 모달
-  const [showCompletedUsers, setShowCompletedUsers] = useState(false);
-  const [selectedPoemUsers, setSelectedPoemUsers] = useState<{id: string, users: string[]}>({id: '', users: []});
-  const [userNicknames, setUserNicknames] = useState<{[key: string]: string}>({});
-  
   // 관리자 권한 확인
-  const isAdmin = currentUser && ADMIN_IDS.includes(currentUser.uid);
+  const isAdmin = Boolean(currentUser?.uid && ADMIN_ID && currentUser.uid === ADMIN_ID);
+  console.log('권한 확인:', {
+    currentUid: currentUser?.uid,
+    adminId: ADMIN_ID,
+    isAdmin
+  });
   
   // 통합된 데이터 가져오기 함수
   const fetchData = async () => {
+    
     if (!isAdmin) return;
     
     try {
@@ -370,7 +304,6 @@ const AdminPoems: React.FC = () => {
         maxCompletionsForPoem: maxCompletions
       });
       
-      setUserNicknames(newNicknames);
 
     } catch (error) {
       console.error('데이터 가져오기 오류:', error);
@@ -493,17 +426,6 @@ const AdminPoems: React.FC = () => {
     }
   };
   
-  // 완료한 사용자 목록 모달 표시
-  const showCompletedUsersModal = (poem: Poem) => {
-    if (poem.id && poem.completedUsers && poem.completedUsers.length > 0) {
-      setSelectedPoemUsers({
-        id: poem.id,
-        users: poem.completedUsers
-      });
-      setShowCompletedUsers(true);
-    }
-  };
-  
   
   if (!isAdmin) {
     return (
@@ -519,28 +441,28 @@ const AdminPoems: React.FC = () => {
   return (
     <Container>
       <Header>
-        <Title>시 관리</Title>
+        <Title>HOME SWEET HOME</Title>
         <div>
-          <Button onClick={initAddForm}>새 시 추가</Button>
+          <Button onClick={initAddForm}>ADD</Button>
         </div>
       </Header>
       
       <StatsContainer>
         <StatCard>
-          <StatNumber>{statistics.totalCompletions}</StatNumber>
-          <StatLabel>전체 시 완료 횟수</StatLabel>
+          <StatNumber><CountUp end={statistics.totalCompletions} duration={1.5} separator="," /></StatNumber> 
+          <StatLabel>Total Completions</StatLabel>
         </StatCard>
         <StatCard>
-          <StatNumber>{statistics.totalUsers}</StatNumber>
-          <StatLabel>전체 가입자 수</StatLabel>
+          <StatNumber><CountUp end={statistics.totalUsers} duration={1.5} separator="," /></StatNumber>
+          <StatLabel>Users</StatLabel>
         </StatCard>
         <StatCard>
-          <StatNumber>{statistics.completedAllPoemsCount}</StatNumber>
-          <StatLabel>모든 시를 완료한 사용자 수</StatLabel>
+          <StatNumber><CountUp end={statistics.completedAllPoemsCount} duration={1.5} separator="," /></StatNumber>
+          <StatLabel>Users Who Completed All Poems</StatLabel>
         </StatCard>
         <StatCard>
-          <StatNumber>{statistics.maxCompletionsForPoem}</StatNumber>
-          <StatLabel>가장 많이 완료된 시의 완료 횟수</StatLabel>
+          <StatNumber><CountUp end={statistics.maxCompletionsForPoem} duration={1.5} separator="," /></StatNumber>
+          <StatLabel>Top Completed Poem</StatLabel>
         </StatCard>
       </StatsContainer>
       
@@ -549,7 +471,7 @@ const AdminPoems: React.FC = () => {
       
       {showForm && (
         <Form onSubmit={handleSubmit}>
-          <h2>{editingPoem ? '시 편집' : '새 시 추가'}</h2>
+          <h2>{editingPoem ? 'EDIT' : 'ADD'}</h2>
           
           <FormGroup>
             <Label htmlFor="title">제목</Label>
@@ -607,7 +529,6 @@ const AdminPoems: React.FC = () => {
             <tr>
               <Th>제목</Th>
               <Th>작가</Th>
-              <Th>내용</Th>
               <Th>완료한 사용자</Th>
               <Th>작업</Th>
             </tr>
@@ -622,29 +543,15 @@ const AdminPoems: React.FC = () => {
                 <tr key={poem.id}>
                   <Td>{poem.title}</Td>
                   <Td>{poem.author}</Td>
-                  <Td>
-                    <ContentPreview>
-                      {poem.content.length > 100 
-                        ? `${poem.content.substring(0, 100)}...` 
-                        : poem.content}
-                    </ContentPreview>
-                  </Td>
                  
                   <Td>
                     {poem.completedUsers?.length || 0}명
-                    {poem.completedUsers && poem.completedUsers.length > 0 && (
-                      <Button 
-                        onClick={() => showCompletedUsersModal(poem)}
-                        style={{ fontSize: '0.8rem', padding: '0.2rem 0.5rem', marginLeft: '5px' }}
-                      >
-                        보기
-                      </Button>
-                    )}
+                
                   </Td>
                   <Td>
                     <Actions>
-                      <Button onClick={() => initEditForm(poem)}>편집</Button>
-                      <DangerButton onClick={() => poem.id && handleDelete(poem.id)}>삭제</DangerButton>
+                      <Button onClick={() => initEditForm(poem)}>EDIT</Button>
+                      <DangerButton onClick={() => poem.id && handleDelete(poem.id)}>DEL</DangerButton>
                     </Actions>
                   </Td>
                 </tr>
@@ -652,31 +559,6 @@ const AdminPoems: React.FC = () => {
             )}
           </tbody>
         </Table>
-      )}
-      
-      {/* 완료한 사용자 목록 모달 */}
-      {showCompletedUsers && (
-        <Modal>
-          <ModalContent>
-            <ModalHeader>
-              <ModalTitle>완료한 사용자 목록</ModalTitle>
-              <CloseButton onClick={() => setShowCompletedUsers(false)}>×</CloseButton>
-            </ModalHeader>
-            
-            <p>
-              <strong>시 ID:</strong> {selectedPoemUsers.id}
-            </p>
-            
-            <CompletedUsersList>
-              <p><strong>타이핑 완료한 사용자 ({selectedPoemUsers.users.length}명):</strong></p>
-              {selectedPoemUsers.users.map((userId, index) => (
-                <UserChip key={index}>
-                  {userNicknames[userId] || '사용자'} ({userId.substring(0, 6)}...)
-                </UserChip>
-              ))}
-            </CompletedUsersList>
-          </ModalContent>
-        </Modal>
       )}
     </Container>
   );
