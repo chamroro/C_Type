@@ -794,23 +794,39 @@ const PoetryTyping: React.FC = () => {
     if (e.key === 'Backspace' && !isComposing) {
       const currentInput = lineInputs[index] || '';
       
-      if (currentInput === '' && index > 0) {
+      if (currentInput === '') {
         e.preventDefault();
         
-        setActiveLineIndex(index - 1);
-        
-        setTimeout(() => {
-          const prevInput = lineRefs.current[index - 1]?.current;
-          if (prevInput) {
-            prevInput.focus();
-            checkAndScroll(index - 1);
-            
-            const inputLength = lineInputs[index - 1]?.length || 0;
-            if (inputLength > 0) {
-              prevInput.setSelectionRange(inputLength, inputLength);
-            }
+        // 이전 줄이 있는지 확인
+        if (index > 0) {
+          let prevIndex = index - 1;
+          
+          // 이전 줄이 빈 줄이면 그 이전 줄로 이동
+          while (prevIndex > 0 && poemLines[prevIndex].trim() === '') {
+            prevIndex--;
           }
-        }, 0);
+
+          // 이전 줄의 입력값도 비어있다면 한 번에 두 줄 위로 이동
+          const prevInput = lineInputs[prevIndex] || '';
+          if (prevInput === '' && prevIndex > 0) {
+            prevIndex--;
+          }
+          
+          setActiveLineIndex(prevIndex);
+          
+          setTimeout(() => {
+            const prevLineRef = lineRefs.current[prevIndex]?.current;
+            if (prevLineRef) {
+              prevLineRef.focus();
+              checkAndScroll(prevIndex);
+              
+              const inputLength = lineInputs[prevIndex]?.length || 0;
+              if (inputLength > 0) {
+                prevLineRef.setSelectionRange(inputLength, inputLength);
+              }
+            }
+          }, 0);
+        }
       }
     }
   };
