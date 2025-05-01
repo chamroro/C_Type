@@ -537,6 +537,22 @@ const CommentBubble = styled.span`
   position: relative;
   display: inline-block;
   cursor: pointer;
+  margin-right: 0.5rem;
+
+  .count-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  
+    height: 0.7rem;
+    padding-top: 0.05rem;
+    background-color:rgb(255, 255, 255);
+    color: rgb(73, 92, 75);
+    font-size: 0.5rem;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+    vertical-align: middle;
+  }
 
   &:hover .comment {
     display: block;
@@ -557,6 +573,22 @@ const CommentBubble = styled.span`
     z-index: 10;
   }
 `;
+
+// 유저별 감상평 정보를 계산하는 함수
+const getUserCompletionInfo = (completedUsers: Array<{ id: string; comment: string }>) => {
+  return completedUsers.reduce((acc, { id, comment }) => {
+    if (!acc[id]) {
+      acc[id] = {
+        count: 1,
+        latestComment: comment
+      };
+    } else {
+      acc[id].count++;
+      acc[id].latestComment = comment;
+    }
+    return acc;
+  }, {} as { [key: string]: { count: number; latestComment: string } });
+};
 
 const PoetryTyping: React.FC = () => {
   const [currentPoem, setCurrentPoem] = useState<Poem | null>(null);
@@ -957,11 +989,42 @@ const PoetryTyping: React.FC = () => {
     setIsCompleted(true);
     setProgress(100);
     
-  
     if (!currentPoem || !currentUser) return;
     
     try {
+      // 현재 유저의 완료 정보를 업데이트
+      const updatedCompletedUsers = [
+        ...(currentPoem.completedUsers || []),
+        { id: currentUser.uid, comment: '' }
+      ];
 
+      // Firestore에 저장
+      await saveCompletedPoem(currentUser.uid, currentPoem.id, '');
+      await addCompletedPoemToUser(currentUser.uid, currentPoem.id);
+
+      // 현재 시의 completedUsers를 즉시 업데이트
+      setCurrentPoem(prev => {
+        if (!prev) return null;
+        return {
+          ...prev,
+          completedUsers: updatedCompletedUsers
+        };
+      });
+
+      // 유저 닉네임 정보도 즉시 업데이트
+      if (!completedUserNames[currentUser.uid]) {
+        const userDoc = await getDoc(doc(db, 'users', currentUser.uid));
+        if (userDoc.exists()) {
+          const userData = userDoc.data();
+          const nickname = userData.nickname || userData.displayName || currentUser.uid.substring(0, 8);
+          setCompletedUserNames(prev => ({
+            ...prev,
+            [currentUser.uid]: nickname
+          }));
+        }
+      }
+
+      console.log('완료 처리 완료');
     } catch (error) {
       console.error('시 완료 저장 중 오류 발생:', error);
     }
@@ -1172,13 +1235,16 @@ const PoetryTyping: React.FC = () => {
                 {Object.keys(completedUserNames).length === 0 ? (
                   <span>'{currentPoem?.title}'의 첫번째 타이퍼가 되어주세요 ✍🏻</span>
                 ) : (
-                  currentPoem?.completedUsers?.map(({ id, comment }, index, array) => (
-                    <CommentBubble key={id}>
-                      {completedUserNames[id]} {comment && <span>💭</span>}&nbsp;&nbsp;
-                      {comment && <span className="comment">{comment}</span>}
-                      
-                    </CommentBubble>
-                  ))
+                  (() => {
+                    const userCompletions = getUserCompletionInfo(currentPoem?.completedUsers || []);
+                    return Object.entries(userCompletions).map(([userId, { count, latestComment }]) => (
+                      <CommentBubble key={userId}>
+                        {completedUserNames[userId]}
+                        {count > 1 && <span className="count-badge">{count}</span>} {latestComment && <span>💭</span>}&nbsp;
+                        {latestComment && <span className="comment">{latestComment}</span>}
+                      </CommentBubble>
+                    ));
+                  })()
                 )}
               </CompletedUsersText>
             )}
