@@ -992,22 +992,12 @@ const PoetryTyping: React.FC = () => {
     if (!currentPoem || !currentUser) return;
     
     try {
-      // 현재 유저의 완료 정보를 업데이트
-      const updatedCompletedUsers = [
-        ...(currentPoem.completedUsers || []),
-        { id: currentUser.uid, comment: '' }
-      ];
-
-      // Firestore에 저장
-      await saveCompletedPoem(currentUser.uid, currentPoem.id, '');
-      await addCompletedPoemToUser(currentUser.uid, currentPoem.id);
-
       // 현재 시의 completedUsers를 즉시 업데이트
       setCurrentPoem(prev => {
         if (!prev) return null;
         return {
           ...prev,
-          completedUsers: updatedCompletedUsers
+          completedUsers: prev.completedUsers || []
         };
       });
 
@@ -1026,7 +1016,7 @@ const PoetryTyping: React.FC = () => {
 
       console.log('완료 처리 완료');
     } catch (error) {
-      console.error('시 완료 저장 중 오류 발생:', error);
+      console.error('시 완료 처리 중 오류 발생:', error);
     }
   };
 
@@ -1076,16 +1066,15 @@ const PoetryTyping: React.FC = () => {
     if (!currentPoem || !currentUser) return;
 
     try {
-      const updatedCompletedUsers = currentPoem.completedUsers?.map(user =>
-        user.id === currentUser.uid ? { ...user, comment } : user
-      ) || [];
-
-      if (!updatedCompletedUsers.some(user => user.id === currentUser.uid)) {
-        updatedCompletedUsers.push({ id: currentUser.uid, comment });
-      }
-
+      // 댓글과 함께 완료 정보 저장
       await saveCompletedPoem(currentUser.uid, currentPoem.id, comment);
       await addCompletedPoemToUser(currentUser.uid, currentPoem.id);
+
+      const updatedCompletedUsers = [
+        ...(currentPoem.completedUsers || []),
+        { id: currentUser.uid, comment }
+      ];
+
       setCurrentPoem(prev => {
         if (!prev) return null;
         return {
@@ -1103,29 +1092,34 @@ const PoetryTyping: React.FC = () => {
     }
   };
 
-  const handleOkayClick = () => {
+  const handleOkayClick = async () => {
     if (!currentPoem || !currentUser) return;
 
-    const updatedCompletedUsers = currentPoem.completedUsers?.map(user =>
-      user.id === currentUser.uid ? { ...user, comment: '' } : user
-    ) || [];
+    try {
+      // 빈 댓글과 함께 완료 정보 저장
+      await saveCompletedPoem(currentUser.uid, currentPoem.id, '');
+      await addCompletedPoemToUser(currentUser.uid, currentPoem.id);
 
-    if (!updatedCompletedUsers.some(user => user.id === currentUser.uid)) {
-      updatedCompletedUsers.push({ id: currentUser.uid, comment: '' });
+      const updatedCompletedUsers = [
+        ...(currentPoem.completedUsers || []),
+        { id: currentUser.uid, comment: '' }
+      ];
+
+      setCurrentPoem(prev => {
+        if (!prev) return null;
+        return {
+          ...prev,
+          completedUsers: updatedCompletedUsers
+        };
+      });
+
+      setShowCompletion(false);
+      setComment('');
+      console.log('토스트바 숨김 처리 완료');
+      setIsUsersOpen(true);
+    } catch (error) {
+      console.error('완료 정보 저장 중 오류 발생:', error);
     }
-
-    setCurrentPoem(prev => {
-      if (!prev) return null;
-      return {
-        ...prev,
-        completedUsers: updatedCompletedUsers
-      };
-    });
-
-    setShowCompletion(false);
-    setComment('');
-    console.log('토스트바 숨김 처리 완료');
-    setIsUsersOpen(true);
   };
 
   useEffect(() => {
