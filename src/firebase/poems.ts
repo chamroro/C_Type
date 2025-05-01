@@ -32,30 +32,7 @@ export const getAllPoems = async (): Promise<Poem[]> => {
     console.log('파이어스토어에서 시 데이터 가져오기 시도...');
     const poemsCollection = collection(db, 'poems');
     const poemSnapshot = await getDocs(poemsCollection);
-    
-    if (poemSnapshot.empty) {
-      console.warn('파이어스토어에 시 데이터가 없습니다. 로컬 데이터로 대체합니다.');
-      
-      // 로컬 시 데이터 가져오기 시도
-      try {
-        const poemsModule = await import('../data/poems');
-        const localPoems = poemsModule.default;
-        console.log(`로컬에서 ${localPoems.length}개의 시를 불러왔습니다.`);
-        
-        // 타입 변환 (로컬 Poem -> 현재 모듈의 Poem)
-        return localPoems.map(poem => ({
-          id: poem.id || '',
-          title: poem.title,
-          content: poem.content,
-          author: poem.author,
-          completedUsers: poem.completedUsers || []
-        } as Poem));
-      } catch (error) {
-        console.error('로컬 시 데이터 가져오기 실패:', error);
-        return [];
-      }
-    }
-    
+
     console.log(`파이어스토어에서 ${poemSnapshot.size}개의 시를 불러왔습니다.`);
     return poemSnapshot.docs.map(doc => {
       const data = doc.data();

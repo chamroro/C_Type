@@ -146,24 +146,6 @@ const AppContent = () => {
       if (isInitialized) return;
       
       try {
-        // 파이어스토어에 시 데이터가 있는지 확인
-        const poemsCollection = collection(db, 'poems');
-        const snapshot = await getDocs(poemsCollection);
-        
-        if (snapshot.empty) {
-          console.log('파이어스토어에 시 데이터가 없습니다. 로컬 데이터를 업로드합니다.');
-          // 로컬 시 데이터 로드
-          const poemsModule = await import('./data/poems');
-          const uploadToFirestore = poemsModule.uploadPoemsToFirestore;
-          
-          if (typeof uploadToFirestore === 'function') {
-            await uploadToFirestore();
-            console.log('로컬 시 데이터가 성공적으로 업로드되었습니다.');
-          }
-        } else {
-          console.log(`파이어스토어에 ${snapshot.size}개의 시 데이터가 있습니다.`);
-        }
-        
         setPoemsLoaded(true);
       } catch (error) {
         console.error('시 데이터 확인 중 오류:', error);
