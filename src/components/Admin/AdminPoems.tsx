@@ -27,6 +27,21 @@ interface Poem {
   completedUsers?: string[];
 }
 
+// 통계 인터페이스 추가
+interface Statistics {
+  totalCompletions: number;
+  totalUsers: number;
+  completedAllPoemsCount: number;
+  maxCompletionsForPoem: number;
+}
+
+interface UserData {
+  uid: string;
+  nickname?: string;
+  displayName?: string;
+  completedPoems?: string[];
+}
+
 // 스타일 컴포넌트
 const Container = styled.div`
   max-width: 800px;
@@ -240,12 +255,47 @@ const NoAccessMessage = styled.div`
   font-size: 1.2rem;
 `;
 
+// 통계 카드 스타일 컴포넌트
+const StatsContainer = styled.div`
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1rem;
+  margin-bottom: 2rem;
+`;
+
+const StatCard = styled.div`
+  background-color: white;
+  padding: 1.5rem;
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  text-align: center;
+`;
+
+const StatNumber = styled.div`
+  font-size: 2.5rem;
+  font-weight: bold;
+  color: rgb(73, 92, 75);
+  margin-bottom: 0.5rem;
+`;
+
+const StatLabel = styled.div`
+  font-size: 0.9rem;
+  color: #666;
+  line-height: 1.4;
+`;
+
 const AdminPoems: React.FC = () => {
   const { currentUser } = useAuth();
   const [poems, setPoems] = useState<Poem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [statistics, setStatistics] = useState<Statistics>({
+    totalCompletions: 0,
+    totalUsers: 0,
+    completedAllPoemsCount: 0,
+    maxCompletionsForPoem: 0
+  });
   
   // 시 추가/편집을 위한 상태
   const [showForm, setShowForm] = useState(false);
@@ -261,64 +311,78 @@ const AdminPoems: React.FC = () => {
   // 완료한 사용자 목록 모달
   const [showCompletedUsers, setShowCompletedUsers] = useState(false);
   const [selectedPoemUsers, setSelectedPoemUsers] = useState<{id: string, users: string[]}>({id: '', users: []});
-  
-  // 사용자 닉네임 캐시
   const [userNicknames, setUserNicknames] = useState<{[key: string]: string}>({});
   
   // 관리자 권한 확인
   const isAdmin = currentUser && ADMIN_IDS.includes(currentUser.uid);
   
-  // 시 목록 가져오기
-  const fetchPoems = async () => {
+  // 통합된 데이터 가져오기 함수
+  const fetchData = async () => {
+    if (!isAdmin) return;
+    
     try {
       setLoading(true);
-      const poemsQuery = query(collection(db, 'poems'), orderBy('title'));
-      const poemSnapshot = await getDocs(poemsQuery);
-      
-      const poemsList: Poem[] = poemSnapshot.docs.map(doc => ({
+      setError(null);
+
+      // 1. 시와 사용자 데이터를 병렬로 가져오기
+      const [poemSnapshot, userSnapshot] = await Promise.all([
+        getDocs(query(collection(db, 'poems'), orderBy('title'))),
+        getDocs(collection(db, 'users'))
+      ]);
+
+      // 2. 시 데이터 처리
+      const poemsList = poemSnapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data() as Poem
       }));
-      
       setPoems(poemsList);
+
+      // 3. 통계 계산
+      const totalPoemsCount = poemsList.length;
+      let totalCompletions = 0;
+      let maxCompletions = 0;
+      let completedAllPoemsCount = 0;
+
+      // 시별 통계
+      poemsList.forEach(poem => {
+        const completionsCount = poem.completedUsers?.length || 0;
+        totalCompletions += completionsCount;
+        maxCompletions = Math.max(maxCompletions, completionsCount);
+      });
+
+      // 사용자별 통계 및 닉네임 캐시
+      const newNicknames: {[key: string]: string} = {};
+      userSnapshot.docs.forEach(userDoc => {
+        const userData = userDoc.data() as UserData;
+        newNicknames[userDoc.id] = userData.nickname || userData.displayName || '사용자';
+        
+        const completedPoemsCount = userData.completedPoems?.length || 0;
+        if (completedPoemsCount === totalPoemsCount) {
+          completedAllPoemsCount++;
+        }
+      });
+
+      // 4. 상태 업데이트
+      setStatistics({
+        totalCompletions,
+        totalUsers: userSnapshot.size,
+        completedAllPoemsCount,
+        maxCompletionsForPoem: maxCompletions
+      });
+      
+      setUserNicknames(newNicknames);
+
     } catch (error) {
-      console.error('시 목록 가져오기 오류:', error);
-      setError('시 목록을 불러오는 중 오류가 발생했습니다.');
+      console.error('데이터 가져오기 오류:', error);
+      setError('데이터를 불러오는 중 오류가 발생했습니다.');
     } finally {
       setLoading(false);
     }
   };
   
-  // 사용자 닉네임 가져오기
-  const fetchUserNicknames = async (userIds: string[]) => {
-    const newNicknames: {[key: string]: string} = {...userNicknames};
-    const idsToFetch = userIds.filter(id => !newNicknames[id]);
-    
-    if (idsToFetch.length === 0) return;
-    
-    try {
-      for (const userId of idsToFetch) {
-        const userQuery = query(collection(db, 'users'), where('uid', '==', userId));
-        const userDocs = await getDocs(userQuery);
-        
-        if (!userDocs.empty) {
-          const userData = userDocs.docs[0].data();
-          newNicknames[userId] = userData.nickname || userData.displayName || '사용자';
-        } else {
-          newNicknames[userId] = '사용자';
-        }
-      }
-      
-      setUserNicknames(newNicknames);
-    } catch (error) {
-      console.error('사용자 닉네임 가져오기 오류:', error);
-    }
-  };
-  
   // 초기 데이터 로딩
   useEffect(() => {
-    if (!isAdmin) return;
-    fetchPoems();
+    fetchData();
   }, [isAdmin]);
   
   // 폼 입력 변경 처리
@@ -406,7 +470,7 @@ const AdminPoems: React.FC = () => {
       setEditingPoem(null);
 
       // 시 목록 새로고침
-      fetchPoems();
+      fetchData();
     } catch (err) {
       console.error('Error:', err);
       setError('시를 저장하는 중 오류가 발생했습니다.');
@@ -422,7 +486,7 @@ const AdminPoems: React.FC = () => {
     try {
       await deleteDoc(doc(db, 'poems', poemId));
       setSuccess('시가 성공적으로 삭제되었습니다.');
-      fetchPoems();
+      fetchData();
     } catch (error) {
       console.error('시 삭제 오류:', error);
       setError('시를 삭제하는 중 오류가 발생했습니다.');
@@ -436,73 +500,10 @@ const AdminPoems: React.FC = () => {
         id: poem.id,
         users: poem.completedUsers
       });
-      fetchUserNicknames(poem.completedUsers);
       setShowCompletedUsers(true);
     }
   };
   
-  // 시 자동 업로드 (로컬 poems.ts 파일에서 Firestore로)
-  const handleUploadLocalPoems = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      setSuccess(null);
-      console.log('로컬 시 업로드 시작...');
-      
-      // poems 모듈 동적 import
-      const poemsModule = await import('../../data/poems');
-      const localPoems = poemsModule.default;
-      console.log(`로컬에서 ${localPoems.length}개의 시를 불러왔습니다.`);
-      
-      // 기존 데이터 모두 삭제
-      const poemsCollection = collection(db, 'poems');
-      const snapshot = await getDocs(poemsCollection);
-      console.log(`파이어스토어에서 삭제할 시: ${snapshot.docs.length}개`);
-      
-      const deletePromises = snapshot.docs.map(doc => {
-        console.log(`시 삭제 중: ${doc.id} - ${doc.data().title}`);
-        return deleteDoc(doc.ref);
-      });
-      await Promise.all(deletePromises);
-      console.log('기존 시 데이터 삭제 완료');
-      
-      // 로컬 시 데이터 추가
-      console.log('새 시 데이터 업로드 시작...');
-      const uploadPromises = localPoems.map(poem => {
-        const poemData = {
-          title: poem.title,
-          content: poem.content,
-          author: poem.author,
-          id: poem.id || doc(collection(db, 'poems')).id, // id가 없는 경우 자동 생성
-          completedUsers: poem.completedUsers || []
-        };
-        
-        const poemRef = poem.id 
-          ? doc(db, 'poems', poem.id) 
-          : doc(collection(db, 'poems'));
-          
-        console.log(`시 업로드 중: ${poemData.id} - ${poemData.title}`);
-        return setDoc(poemRef, poemData);
-      });
-      
-      await Promise.all(uploadPromises);
-      console.log('모든 시 업로드 완료!');
-      
-      setSuccess(`${localPoems.length}개의 시가 성공적으로 업로드되었습니다.`);
-      setLoading(false);
-      fetchPoems();
-    } catch (error: unknown) {
-      console.error('로컬 시 업로드 오류:', error);
-      let errorMessage = '로컬 시를 업로드하는 중 오류가 발생했습니다';
-      
-      if (error instanceof Error) {
-        errorMessage += `: ${error.message}`;
-      }
-      
-      setError(errorMessage);
-      setLoading(false);
-    }
-  };
   
   if (!isAdmin) {
     return (
@@ -520,12 +521,28 @@ const AdminPoems: React.FC = () => {
       <Header>
         <Title>시 관리</Title>
         <div>
-          <Button onClick={handleUploadLocalPoems} style={{ marginRight: '10px' }}>
-            로컬 시 업로드
-          </Button>
           <Button onClick={initAddForm}>새 시 추가</Button>
         </div>
       </Header>
+      
+      <StatsContainer>
+        <StatCard>
+          <StatNumber>{statistics.totalCompletions}</StatNumber>
+          <StatLabel>전체 시 완료 횟수</StatLabel>
+        </StatCard>
+        <StatCard>
+          <StatNumber>{statistics.totalUsers}</StatNumber>
+          <StatLabel>전체 가입자 수</StatLabel>
+        </StatCard>
+        <StatCard>
+          <StatNumber>{statistics.completedAllPoemsCount}</StatNumber>
+          <StatLabel>모든 시를 완료한 사용자 수</StatLabel>
+        </StatCard>
+        <StatCard>
+          <StatNumber>{statistics.maxCompletionsForPoem}</StatNumber>
+          <StatLabel>가장 많이 완료된 시의 완료 횟수</StatLabel>
+        </StatCard>
+      </StatsContainer>
       
       {error && <ErrorMessage>{error}</ErrorMessage>}
       {success && <SuccessMessage>{success}</SuccessMessage>}
