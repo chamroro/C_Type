@@ -112,38 +112,34 @@ const LoadingSpinner = styled.div`
 
 interface NicknameModalProps {
   isOpen: boolean;
-  initialNickname: string;
-  onSave: (nickname: string) => void;
   onClose: () => void;
-  isLoading?: boolean;
+  onSubmit: (nickname: string) => Promise<void>;
+  isLoading: boolean;
+  isNewUser: boolean;
 }
 
 const NicknameModal: React.FC<NicknameModalProps> = ({ 
   isOpen, 
-  initialNickname, 
-  onSave, 
   onClose,
-  isLoading = false
+  onSubmit,
+  isLoading,
+  isNewUser
 }) => {
-  const [nickname, setNickname] = useState(initialNickname);
-  
-  useEffect(() => {
-    setNickname(initialNickname);
-  }, [initialNickname, isOpen]);
+  const [nickname, setNickname] = useState('');
   
   if (!isOpen) return null;
   
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (nickname.trim()) {
-      onSave(nickname.trim());
+      await onSubmit(nickname.trim());
     }
   };
   
   return (
     <ModalOverlay>
       <ModalContainer>
-        <Title>닉네임 설정</Title>
+        <Title>{isNewUser ? '환영합니다!' : '닉네임 설정'}</Title>
         <Form onSubmit={handleSubmit}>
           <Label htmlFor="nickname">닉네임</Label>
           <Input
