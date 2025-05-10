@@ -180,7 +180,7 @@ const AppContent = () => {
         </MainContent>
       </AppContainer>
       {!currentUser && <LoginBubble />}
-      <DailyPopup />
+      {/* <DailyPopup /> */}
       <BuyMeCoffeeButton href="https://www.buymeacoffee.com/kimhaeun" target="_blank" rel="noopener noreferrer">
         💌
       </BuyMeCoffeeButton>
