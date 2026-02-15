@@ -3,15 +3,8 @@ import {
   doc, 
   getDoc, 
   getDocs, 
-  query, 
-  where, 
-  addDoc, 
-  Timestamp, 
-  orderBy,
-  limit,
   updateDoc,
   arrayUnion,
-  FirestoreError
 } from 'firebase/firestore';
 import { db } from './config';
 
