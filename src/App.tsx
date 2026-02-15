@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import styled, { createGlobalStyle } from 'styled-components';
+import styled from 'styled-components';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import Navigation from './components/Navigation';
 import PoetryTyping from './components/PoetryTyping';
@@ -8,68 +8,6 @@ import MobileWarning from './components/MobileWarning';
 import { BrowserRouter as Router, Route, Switch } from 'react-router-dom';
 import LoginBubble from './components/LoginBubble';
 import DailyPopup from './components/DailyPopup';
-
-// 글꼴 추가
-const GlobalStyle = createGlobalStyle`
-  @font-face {
-    font-family: 'Pretendard-Regular';
-    src: url('https://fastly.jsdelivr.net/gh/Project-Noonnu/noonfonts_2107@1.1/Pretendard-Bold.woff') format('woff');
-    font-weight: 700;
-    font-style: bold;
-  }
-  @font-face {
-    font-family: 'BookkMyungjo-Bd';
-    src: url('https://fastly.jsdelivr.net/gh/projectnoonnu/noonfonts_2302@1.0/BookkMyungjo-Bd.woff2') format('woff2');
-    font-weight: 700;
-    font-style: normal;
-  }
-
-  @font-face {
-    font-family: 'MaruBuri';
-    src: url(https://hangeul.pstatic.net/hangeul_static/webfont/MaruBuri/MaruBuri-Regular.eot);
-    src: url(https://hangeul.pstatic.net/hangeul_static/webfont/MaruBuri/MaruBuri-Regular.eot?#iefix) format("embedded-opentype"), 
-         url(https://hangeul.pstatic.net/hangeul_static/webfont/MaruBuri/MaruBuri-Regular.woff2) format("woff2"), 
-         url(https://hangeul.pstatic.net/hangeul_static/webfont/MaruBuri/MaruBuri-Regular.woff) format("woff"), 
-         url(https://hangeul.pstatic.net/hangeul_static/webfont/MaruBuri/MaruBuri-Regular.ttf) format("truetype");
-  }
-
-  @font-face {
-    font-family: 'IntelOneMono';
-    src: url('https://fastly.jsdelivr.net/gh/projectnoonnu/noonfonts_2307-1@1.1/intelone-mono-font-family-italic.woff2') format('woff2');
-    font-weight: 400;
-    font-style: normal;
-  }
-
-  @font-face {
-    font-family: 'Shilla_CultureB-Bold';
-    src: url('https://fastly.jsdelivr.net/gh/projectnoonnu/noonfonts_2206-02@1.0/Shilla_CultureB-Bold.woff2') format('woff2');
-    font-weight: 700;
-    font-style: normal;
-  }
-
-  @font-face {
-    font-family: 'YESMyoungjo-Regular';
-    src: url('https://fastly.jsdelivr.net/gh/projectnoonnu/noonfonts_13@1.0/YESMyoungjo-Regular.woff') format('woff');
-    font-weight: normal;
-    font-style: normal;
-  }
-
-  @font-face {
-    font-family: 'MapoFlowerIsland';
-    src: url('https://fastly.jsdelivr.net/gh/projectnoonnu/noonfonts_2001@1.1/MapoFlowerIslandA.woff') format('woff');
-    font-weight: normal;
-    font-style: normal;
-  }
-  
-  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&display=swap');
-  
-  body {
-    margin: 0;
-    padding: 0;
-    font-family: 'Noto Sans KR', sans-serif;
-    background-color:rgb(255, 255, 255);
-  }
-`;
 
 const AppContainer = styled.div`
   font-family: 'Noto Sans KR', sans-serif;
@@ -169,7 +107,6 @@ const AppContent = () => {
   return (
     <>
       <MobileWarning />
-      <GlobalStyle />
       <AppContainer>
         <Navigation />
         <MainContent>

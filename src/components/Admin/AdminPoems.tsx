@@ -380,28 +380,30 @@ const AdminPoems: React.FC = () => {
         {} as Record<string, string>,
       );
 
-      const timedCommentRows: CommentRow[] = (commentSnapshot?.docs || []).map((commentDoc, index) => {
-        const data = commentDoc.data() as {
-          uid?: string;
-          poemId?: string;
-          comment?: string;
-          createdAt?: { seconds: number; nanoseconds: number } | null;
-        };
-        const poemId = data.poemId || '-';
-        const uid = data.uid || '-';
-        const comment = (data.comment || '').trim();
+      const timedCommentRows: CommentRow[] = (commentSnapshot?.docs || []).map(
+        (commentDoc, index) => {
+          const data = commentDoc.data() as {
+            uid?: string;
+            poemId?: string;
+            comment?: string;
+            createdAt?: { seconds: number; nanoseconds: number } | null;
+          };
+          const poemId = data.poemId || '-';
+          const uid = data.uid || '-';
+          const comment = (data.comment || '').trim();
 
-        return {
-          id: commentDoc.id,
-          poemId,
-          poemTitle: poemTitleMap[poemId] || '-',
-          uid,
-          nickname: userMap[uid]?.nickname || userMap[uid]?.displayName || uid || '사용자',
-          comment,
-          createdAtMs: getTimestampMs(data.createdAt),
-          fallbackOrder: index + 1,
-        };
-      });
+          return {
+            id: commentDoc.id,
+            poemId,
+            poemTitle: poemTitleMap[poemId] || '-',
+            uid,
+            nickname: userMap[uid]?.nickname || userMap[uid]?.displayName || uid || '사용자',
+            comment,
+            createdAtMs: getTimestampMs(data.createdAt),
+            fallbackOrder: index + 1,
+          };
+        },
+      );
 
       // 신규 comments 컬렉션에 이미 있는 항목은 legacy fallback에서 중복 제거
       const timedKeyCountMap: Record<string, number> = {};
