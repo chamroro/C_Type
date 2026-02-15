@@ -21,7 +21,7 @@ const Overlay = styled.div<{ isOpen: boolean }>`
   height: 100vh;
   background-color: rgb(73, 92, 75);
   z-index: 1000;
-  display: ${props => props.isOpen ? 'flex' : 'none'};
+  display: ${(props) => (props.isOpen ? 'flex' : 'none')};
   flex-direction: column;
   padding: 2rem;
   overflow-y: auto;
@@ -72,13 +72,13 @@ const PoemItem = styled.div<{ isCompleted: boolean }>`
   font-family: 'Pretendard-Regular';
   display: flex;
   font-size: 1.8rem;
-  color: ${props => props.isCompleted ?  '#6c6c6c' : '#000'};
+  color: ${(props) => (props.isCompleted ? '#6c6c6c' : '#000')};
   cursor: pointer;
   transition: all 0.2s ease;
   
   &:hover {
-    background-color: ${props => props.isCompleted ? '#EEEEEE' : '#F5F5F5'};
-    color: ${props => props.isCompleted ? '#757575' : '#000'};
+    background-color: ${(props) => (props.isCompleted ? '#EEEEEE' : '#F5F5F5')};
+    color: ${(props) => (props.isCompleted ? '#757575' : '#000')};
   }
 `;
 
@@ -92,7 +92,7 @@ const PoemTitle = styled.span<{ isCompleted: boolean }>`
     bottom: -2px;
     width: 100%;
     height: 1px;
-    background-color: ${props => props.isCompleted ? '#9E9E9E' : '#212121'};
+    background-color: ${(props) => (props.isCompleted ? '#9E9E9E' : '#212121')};
     transform: scaleX(0);
     transition: transform 0.2s ease;
   }
@@ -231,22 +231,27 @@ const NavButton = styled.button`
   }
 `;
 
-
 const PencilIcon = () => (
   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <path d="M3 17.25V21H6.75L17.81 9.94L14.06 6.19L3 17.25ZM20.71 7.04C21.1 6.65 21.1 6.02 20.71 5.63L18.37 3.29C17.98 2.9 17.35 2.9 16.96 3.29L15.13 5.12L18.88 8.87L20.71 7.04Z" fill="currentColor"/>
+    <path
+      d="M3 17.25V21H6.75L17.81 9.94L14.06 6.19L3 17.25ZM20.71 7.04C21.1 6.65 21.1 6.02 20.71 5.63L18.37 3.29C17.98 2.9 17.35 2.9 16.96 3.29L15.13 5.12L18.88 8.87L20.71 7.04Z"
+      fill="currentColor"
+    />
   </svg>
 );
 
 const CheckIcon = () => (
   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z" fill="currentColor"/>
+    <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z" fill="currentColor" />
   </svg>
 );
 
 const CancelIcon = () => (
   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41z" fill="currentColor"/>
+    <path
+      d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41z"
+      fill="currentColor"
+    />
   </svg>
 );
 
@@ -318,7 +323,7 @@ const ModalButton = styled.button`
 `;
 
 const Navigation = () => {
-  const {currentUser, logout, updateNickname } = useAuth();
+  const { currentUser, logout, updateNickname } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
   const [nickname, setNickname] = useState('');
   const [isOpen, setIsOpen] = useState(false);
@@ -328,12 +333,12 @@ const Navigation = () => {
   const nicknameInputRef = useRef<HTMLInputElement>(null);
   const userNameRef = useRef<HTMLSpanElement>(null);
   const [showNicknameModal, setShowNicknameModal] = useState(false);
-  
+
   // 사용자 정보 및 완료한 시 목록 가져오기
   useEffect(() => {
     if (currentUser) {
       setNickname(currentUser.nickname || currentUser.displayName || '');
-      
+
       db.collection('users')
         .doc(currentUser.uid)
         .get()
@@ -355,9 +360,9 @@ const Navigation = () => {
       try {
         const snapshot = await db.collection('poems').get();
 
-        const poemList = snapshot.docs.map(doc => ({
+        const poemList = snapshot.docs.map((doc) => ({
           id: doc.id,
-          ...doc.data() as Omit<Poem, 'id'>
+          ...(doc.data() as Omit<Poem, 'id'>),
         }));
 
         // ID를 숫자로 변환하여 정렬
@@ -401,7 +406,8 @@ const Navigation = () => {
 
   const handleGoogleLogin = () => {
     const provider = new firebase.auth.GoogleAuthProvider();
-    auth.signInWithPopup(provider)
+    auth
+      .signInWithPopup(provider)
       .then((result) => {
         console.log('로그인 성공:', result.user);
         // 새로운 사용자인지 확인
@@ -420,11 +426,12 @@ const Navigation = () => {
 
   const handleGoogleSignUp = () => {
     const provider = new firebase.auth.GoogleAuthProvider();
-    auth.signInWithPopup(provider)
+    auth
+      .signInWithPopup(provider)
       .then(async (result) => {
         console.log('회원가입 성공:', result.user);
         const isNewUser = result.additionalUserInfo?.isNewUser;
-        
+
         if (isNewUser && result.user) {
           // 새로운 사용자의 경우 닉네임 설정 모달 표시
           setShowNicknameModal(true);
@@ -449,20 +456,21 @@ const Navigation = () => {
     if (nickname.trim() && currentUser) {
       const trimmedNickname = nickname.trim();
       const myUid = currentUser.uid;
-  
+
       try {
         // 닉네임 중복 체크 (자기 자신은 제외)
-        const nicknameQuery = await db.collection('users')
+        const nicknameQuery = await db
+          .collection('users')
           .where('nickname', '==', trimmedNickname)
           .get();
-  
-        const isDuplicate = nicknameQuery.docs.some(doc => doc.id !== myUid);
-  
+
+        const isDuplicate = nicknameQuery.docs.some((doc) => doc.id !== myUid);
+
         if (isDuplicate) {
           alert('이미 사용 중인 닉네임입니다. 다른 닉네임을 입력해주세요.');
           return;
         }
-  
+
         await updateNickname(trimmedNickname);
         setIsEditing(false);
       } catch (error) {
@@ -471,7 +479,6 @@ const Navigation = () => {
       }
     }
   };
-  
 
   const handleCancelEdit = () => {
     setNickname(currentUser?.nickname || currentUser?.displayName || '');
@@ -495,7 +502,7 @@ const Navigation = () => {
 
   const handleNicknameSubmit = async () => {
     console.log('닉네임 설정 시도:', nickname);
-    
+
     if (!nickname.trim()) {
       alert('닉네임을 입력해주세요.');
       return;
@@ -505,7 +512,7 @@ const Navigation = () => {
       // 닉네임 중복 체크
       const nicknameQuery = query(
         collection(db, 'users'),
-        where('nickname', '==', nickname.trim())
+        where('nickname', '==', nickname.trim()),
       );
       const querySnapshot = await getDocs(nicknameQuery);
 
@@ -532,11 +539,11 @@ const Navigation = () => {
         email: authUser.email,
         photoURL: authUser.photoURL,
         completedPoems: [],
-        createdAt: new Date()
+        createdAt: new Date(),
       });
 
       console.log('사용자 문서 생성 완료');
-      
+
       // 상태 초기화 및 페이지 새로고침
       setShowNicknameModal(false);
       setNickname('');
@@ -549,9 +556,7 @@ const Navigation = () => {
 
   return (
     <>
-      <MenuButton onClick={() => setIsOpen(true)}>
-        ✍🏻
-      </MenuButton>
+      <MenuButton onClick={() => setIsOpen(true)}>✍🏻</MenuButton>
       <Overlay isOpen={isOpen}>
         <CloseButton onClick={() => setIsOpen(false)}>×</CloseButton>
         <OverlayContent>
@@ -560,8 +565,8 @@ const Navigation = () => {
               {poems.map((poem) => {
                 const isCompleted = completedPoems.includes(poem.id);
                 return (
-                  <PoemItem 
-                    key={poem.id} 
+                  <PoemItem
+                    key={poem.id}
                     isCompleted={isCompleted}
                     onClick={() => handlePoemClick(poem.id)}
                   >
@@ -609,16 +614,20 @@ const Navigation = () => {
                       </>
                     )}
                   </UserInfo>
-                
+
                   <NavButton onClick={handleLogout}>로그아웃</NavButton>
                   {isAdmin && (
-                    <NavButton as="a" href="/admin">관리자</NavButton>
+                    <NavButton as="a" href="/admin">
+                      관리자
+                    </NavButton>
                   )}
                 </>
               ) : (
                 <div>
                   <NavButton onClick={handleGoogleLogin}>로그인</NavButton>
-                  <NavButton onClick={handleGoogleSignUp} style={{ marginLeft: '1rem' }}>회원가입</NavButton>
+                  <NavButton onClick={handleGoogleSignUp} style={{ marginLeft: '1rem' }}>
+                    회원가입
+                  </NavButton>
                 </div>
               )}
             </BottomInfo>
@@ -637,9 +646,7 @@ const Navigation = () => {
               placeholder="닉네임을 입력하세요"
               maxLength={10}
             />
-            <ModalButton onClick={handleNicknameSubmit}>
-              확인
-            </ModalButton>
+            <ModalButton onClick={handleNicknameSubmit}>확인</ModalButton>
           </ModalContent>
         </Modal>
       )}
@@ -647,4 +654,4 @@ const Navigation = () => {
   );
 };
 
-export default Navigation; 
+export default Navigation;

@@ -40,4 +40,4 @@ const MobileWarning = () => {
   );
 };
 
-export default MobileWarning; 
+export default MobileWarning;

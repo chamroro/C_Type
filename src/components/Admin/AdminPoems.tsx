@@ -1,17 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import { useAuth } from '../../contexts/AuthContext';
-import { 
-  collection, 
-  addDoc, 
-  getDocs, 
-  updateDoc, 
-  deleteDoc, 
-  doc, 
-  query, 
+import {
+  collection,
+  addDoc,
+  getDocs,
+  updateDoc,
+  deleteDoc,
+  doc,
+  query,
   orderBy,
   where,
-  setDoc
+  setDoc,
 } from 'firebase/firestore';
 import { db } from '../../firebase/config';
 import CountUp from 'react-countup';
@@ -49,7 +49,6 @@ const Container = styled.div`
   padding: 2rem;
   background-color: white;
   border-radius: 8px;
- 
 `;
 
 const Header = styled.div`
@@ -63,14 +62,14 @@ const Title = styled.h1`
   font-size: 1.8rem;
   color: #333;
   margin: 0;
-  font-family: 'Noto Sans KR', sans-serif;
+  font-family: "Noto Sans KR", sans-serif;
   font-weight: 900;
   letter-spacing: -0.05em;
 `;
 
 const Button = styled.button`
   padding: 0.3rem 0.7rem;
-  background-color:rgb(44, 71, 101);
+  background-color: rgb(44, 71, 101);
   color: white;
   border: none;
   border-radius: 4px;
@@ -80,7 +79,7 @@ const Button = styled.button`
   transition: background-color 0.2s;
 
   &:hover {
-    background-color:rgb(108, 132, 157);
+    background-color: rgb(108, 132, 157);
   }
 
   &:disabled {
@@ -90,8 +89,8 @@ const Button = styled.button`
 `;
 
 const DangerButton = styled(Button)`
-  background-color:rgb(213, 136, 128);
-  
+  background-color: rgb(213, 136, 128);
+
   &:hover {
     background-color: #c0392b;
   }
@@ -139,7 +138,7 @@ const Table = styled.table`
   margin-top: 1rem;
   vertical-align: middle;
   color: rgb(65, 65, 65);
-  font-family: 'Noto Sans KR', sans-serif;
+  font-family: "Noto Sans KR", sans-serif;
   font-weight: 700;
 `;
 
@@ -147,15 +146,11 @@ const Th = styled.th`
   text-align: left;
   padding: 0.5rem 1rem;
   border-bottom: 2px solid #eee;
-
-
 `;
 
 const Td = styled.td`
   padding: 0.5rem 1rem;
   border-bottom: 1px solid #eee;
-
-  
 `;
 
 const Actions = styled.div`
@@ -197,7 +192,7 @@ const StatsContainer = styled.div`
 const StatCard = styled.div`
   background-color: white;
   padding: 1.5rem;
-  
+
   text-align: center;
 `;
 
@@ -212,7 +207,7 @@ const StatLabel = styled.div`
   font-size: 0.8rem;
   color: #666;
   line-height: 1.4;
-  font-family: 'Noto Sans KR', sans-serif;
+  font-family: "Noto Sans KR", sans-serif;
   font-weight: 700;
   letter-spacing: -0.05em;
 `;
@@ -227,9 +222,9 @@ const AdminPoems: React.FC = () => {
     totalCompletions: 0,
     totalUsers: 0,
     completedAllPoemsCount: 0,
-    maxCompletionsForPoem: 0
+    maxCompletionsForPoem: 0,
   });
-  
+
   // 시 추가/편집을 위한 상태
   const [showForm, setShowForm] = useState(false);
   const [editingPoem, setEditingPoem] = useState<Poem | null>(null);
@@ -238,22 +233,21 @@ const AdminPoems: React.FC = () => {
     title: '',
     content: '',
     author: '',
-    completedUsers: []
+    completedUsers: [],
   });
-  
+
   // 관리자 권한 확인
   const isAdmin = Boolean(currentUser?.uid && ADMIN_ID && currentUser.uid === ADMIN_ID);
   console.log('권한 확인:', {
     currentUid: currentUser?.uid,
     adminId: ADMIN_ID,
-    isAdmin
+    isAdmin,
   });
-  
+
   // 통합된 데이터 가져오기 함수
   const fetchData = async () => {
-    
     if (!isAdmin) return;
-    
+
     try {
       setLoading(true);
       setError(null);
@@ -261,13 +255,13 @@ const AdminPoems: React.FC = () => {
       // 1. 시와 사용자 데이터를 병렬로 가져오기
       const [poemSnapshot, userSnapshot] = await Promise.all([
         getDocs(query(collection(db, 'poems'), orderBy('title'))),
-        getDocs(collection(db, 'users'))
+        getDocs(collection(db, 'users')),
       ]);
 
       // 2. 시 데이터 처리
-      const poemsList = poemSnapshot.docs.map(doc => ({
+      const poemsList = poemSnapshot.docs.map((doc) => ({
         id: doc.id,
-        ...doc.data() as Poem
+        ...(doc.data() as Poem),
       }));
       setPoems(poemsList);
 
@@ -278,18 +272,18 @@ const AdminPoems: React.FC = () => {
       let completedAllPoemsCount = 0;
 
       // 시별 통계
-      poemsList.forEach(poem => {
+      poemsList.forEach((poem) => {
         const completionsCount = poem.completedUsers?.length || 0;
         totalCompletions += completionsCount;
         maxCompletions = Math.max(maxCompletions, completionsCount);
       });
 
       // 사용자별 통계 및 닉네임 캐시
-      const newNicknames: {[key: string]: string} = {};
-      userSnapshot.docs.forEach(userDoc => {
+      const newNicknames: { [key: string]: string } = {};
+      userSnapshot.docs.forEach((userDoc) => {
         const userData = userDoc.data() as UserData;
         newNicknames[userDoc.id] = userData.nickname || userData.displayName || '사용자';
-        
+
         const completedPoemsCount = userData.completedPoems?.length || 0;
         if (completedPoemsCount === totalPoemsCount) {
           completedAllPoemsCount++;
@@ -301,10 +295,8 @@ const AdminPoems: React.FC = () => {
         totalCompletions,
         totalUsers: userSnapshot.size,
         completedAllPoemsCount,
-        maxCompletionsForPoem: maxCompletions
+        maxCompletionsForPoem: maxCompletions,
       });
-      
-
     } catch (error) {
       console.error('데이터 가져오기 오류:', error);
       setError('데이터를 불러오는 중 오류가 발생했습니다.');
@@ -312,18 +304,20 @@ const AdminPoems: React.FC = () => {
       setLoading(false);
     }
   };
-  
+
   // 초기 데이터 로딩
   useEffect(() => {
     fetchData();
   }, [isAdmin]);
-  
+
   // 폼 입력 변경 처리
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+  const handleInputChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>,
+  ) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    setFormData((prev) => ({ ...prev, [name]: value }));
   };
-  
+
   // 시 추가 폼 초기화
   const initAddForm = () => {
     setFormData({
@@ -331,25 +325,25 @@ const AdminPoems: React.FC = () => {
       title: '',
       content: '',
       author: '',
-      completedUsers: []
+      completedUsers: [],
     });
     setEditingPoem(null);
     setShowForm(true);
     setError(null);
     setSuccess(null);
   };
-  
+
   // 시 편집 폼 초기화
   const initEditForm = (poem: Poem) => {
     setFormData({
-      ...poem
+      ...poem,
     });
     setEditingPoem(poem);
     setShowForm(true);
     setError(null);
     setSuccess(null);
   };
-  
+
   // 폼 제출 처리
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -362,7 +356,7 @@ const AdminPoems: React.FC = () => {
         await updateDoc(doc(db, 'poems', editingPoem.id), {
           title: formData.title,
           content: formData.content,
-          author: formData.author
+          author: formData.author,
         });
         setSuccess('시가 성공적으로 수정되었습니다.');
       } else {
@@ -370,8 +364,8 @@ const AdminPoems: React.FC = () => {
         const poemsQuery = query(collection(db, 'poems'));
         const poemSnapshot = await getDocs(poemsQuery);
         let maxId = 0;
-        
-        poemSnapshot.docs.forEach(doc => {
+
+        poemSnapshot.docs.forEach((doc) => {
           const numericId = parseInt(doc.id);
           if (!isNaN(numericId) && numericId > maxId) {
             maxId = numericId;
@@ -386,7 +380,7 @@ const AdminPoems: React.FC = () => {
           title: formData.title,
           content: formData.content,
           author: formData.author,
-          completedUsers: []
+          completedUsers: [],
         });
         setSuccess('새로운 시가 성공적으로 추가되었습니다.');
       }
@@ -398,7 +392,7 @@ const AdminPoems: React.FC = () => {
         title: '',
         content: '',
         author: '',
-        completedUsers: []
+        completedUsers: [],
       });
       setEditingPoem(null);
 
@@ -409,13 +403,13 @@ const AdminPoems: React.FC = () => {
       setError('시를 저장하는 중 오류가 발생했습니다.');
     }
   };
-  
+
   // 시 삭제 처리
   const handleDelete = async (poemId: string) => {
     if (!window.confirm('정말로 이 시를 삭제하시겠습니까?')) {
       return;
     }
-    
+
     try {
       await deleteDoc(doc(db, 'poems', poemId));
       setSuccess('시가 성공적으로 삭제되었습니다.');
@@ -425,8 +419,7 @@ const AdminPoems: React.FC = () => {
       setError('시를 삭제하는 중 오류가 발생했습니다.');
     }
   };
-  
-  
+
   if (!isAdmin) {
     return (
       <Container>
@@ -437,7 +430,7 @@ const AdminPoems: React.FC = () => {
       </Container>
     );
   }
-  
+
   return (
     <Container>
       <Header>
@@ -446,33 +439,41 @@ const AdminPoems: React.FC = () => {
           <Button onClick={initAddForm}>ADD</Button>
         </div>
       </Header>
-      
+
       <StatsContainer>
         <StatCard>
-          <StatNumber><CountUp end={statistics.totalCompletions} duration={1.5} separator="," /></StatNumber> 
+          <StatNumber>
+            <CountUp end={statistics.totalCompletions} duration={1.5} separator="," />
+          </StatNumber>
           <StatLabel>Total Completions</StatLabel>
         </StatCard>
         <StatCard>
-          <StatNumber><CountUp end={statistics.totalUsers} duration={1.5} separator="," /></StatNumber>
+          <StatNumber>
+            <CountUp end={statistics.totalUsers} duration={1.5} separator="," />
+          </StatNumber>
           <StatLabel>Users</StatLabel>
         </StatCard>
         <StatCard>
-          <StatNumber><CountUp end={statistics.completedAllPoemsCount} duration={1.5} separator="," /></StatNumber>
+          <StatNumber>
+            <CountUp end={statistics.completedAllPoemsCount} duration={1.5} separator="," />
+          </StatNumber>
           <StatLabel>Users Who Completed All Poems</StatLabel>
         </StatCard>
         <StatCard>
-          <StatNumber><CountUp end={statistics.maxCompletionsForPoem} duration={1.5} separator="," /></StatNumber>
+          <StatNumber>
+            <CountUp end={statistics.maxCompletionsForPoem} duration={1.5} separator="," />
+          </StatNumber>
           <StatLabel>Top Completed Poem</StatLabel>
         </StatCard>
       </StatsContainer>
-      
+
       {error && <ErrorMessage>{error}</ErrorMessage>}
       {success && <SuccessMessage>{success}</SuccessMessage>}
-      
+
       {showForm && (
         <Form onSubmit={handleSubmit}>
           <h2>{editingPoem ? 'EDIT' : 'ADD'}</h2>
-          
+
           <FormGroup>
             <Label htmlFor="title">제목</Label>
             <Input
@@ -484,7 +485,7 @@ const AdminPoems: React.FC = () => {
               required
             />
           </FormGroup>
-          
+
           <FormGroup>
             <Label htmlFor="author">작가</Label>
             <Input
@@ -496,7 +497,7 @@ const AdminPoems: React.FC = () => {
               required
             />
           </FormGroup>
-          
+
           <FormGroup>
             <Label htmlFor="content">내용</Label>
             <Textarea
@@ -507,12 +508,12 @@ const AdminPoems: React.FC = () => {
               required
             />
           </FormGroup>
-          
+
           <div>
             <Button type="submit">저장</Button>
-            <Button 
-              type="button" 
-              onClick={() => setShowForm(false)} 
+            <Button
+              type="button"
+              onClick={() => setShowForm(false)}
               style={{ marginLeft: '10px', backgroundColor: '#999' }}
             >
               취소
@@ -520,7 +521,7 @@ const AdminPoems: React.FC = () => {
           </div>
         </Form>
       )}
-      
+
       {loading ? (
         <p>시 목록을 불러오는 중...</p>
       ) : (
@@ -539,19 +540,18 @@ const AdminPoems: React.FC = () => {
                 <Td colSpan={6}>시 목록이 비어있습니다.</Td>
               </tr>
             ) : (
-              poems.map(poem => (
+              poems.map((poem) => (
                 <tr key={poem.id}>
                   <Td>{poem.title}</Td>
                   <Td>{poem.author}</Td>
-                 
-                  <Td>
-                    {poem.completedUsers?.length || 0}명
-                
-                  </Td>
+
+                  <Td>{poem.completedUsers?.length || 0}명</Td>
                   <Td>
                     <Actions>
                       <Button onClick={() => initEditForm(poem)}>EDIT</Button>
-                      <DangerButton onClick={() => poem.id && handleDelete(poem.id)}>DEL</DangerButton>
+                      <DangerButton onClick={() => poem.id && handleDelete(poem.id)}>
+                        DEL
+                      </DangerButton>
                     </Actions>
                   </Td>
                 </tr>
@@ -564,4 +564,4 @@ const AdminPoems: React.FC = () => {
   );
 };
 
-export default AdminPoems; 
+export default AdminPoems;

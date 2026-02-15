@@ -33,7 +33,7 @@ interface UserDoc {
 }
 
 function sleep(ms: number) {
-  return new Promise(resolve => setTimeout(resolve, ms));
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 // 이메일 마스킹 함수
@@ -47,7 +47,7 @@ function maskEmail(email?: string): string {
 
 async function drawEventWinners() {
   const poemsSnapshot = await getDocs(collection(db, 'poems'));
-  const poems: PoemDoc[] = poemsSnapshot.docs.map(doc => {
+  const poems: PoemDoc[] = poemsSnapshot.docs.map((doc) => {
     const data = doc.data();
     return {
       id: doc.id,
@@ -56,7 +56,7 @@ async function drawEventWinners() {
   });
 
   const usersSnapshot = await getDocs(collection(db, 'users'));
-  const users: UserDoc[] = usersSnapshot.docs.map(doc => {
+  const users: UserDoc[] = usersSnapshot.docs.map((doc) => {
     const data = doc.data();
     return {
       id: doc.id,
@@ -68,7 +68,7 @@ async function drawEventWinners() {
   });
 
   const totalPoemCount = poems.length;
-  const allCompletedUsers = users.filter(user => {
+  const allCompletedUsers = users.filter((user) => {
     const completedPoems = user.completedPoems || [];
     return completedPoems.length === totalPoemCount;
   });
@@ -80,7 +80,7 @@ async function drawEventWinners() {
       firstCommenters.add(firstUser);
     }
   }
-  const firstCommenterUsers = users.filter(user => firstCommenters.has(user.id));
+  const firstCommenterUsers = users.filter((user) => firstCommenters.has(user.id));
 
   function pickRandom<T>(arr: T[]): T | undefined {
     if (arr.length === 0) return undefined;
@@ -98,7 +98,9 @@ async function drawEventWinners() {
   }
   console.log();
   if (allCompletedWinner) {
-    console.log(`닉네임: ${allCompletedWinner.nickname || allCompletedWinner.displayName || allCompletedWinner.id}`);
+    console.log(
+      `닉네임: ${allCompletedWinner.nickname || allCompletedWinner.displayName || allCompletedWinner.id}`,
+    );
     console.log(`이메일: ${maskEmail(allCompletedWinner.email)}`);
   }
 
@@ -110,7 +112,9 @@ async function drawEventWinners() {
   }
   console.log();
   if (firstCommentWinner) {
-    console.log(`닉네임: ${firstCommentWinner.nickname || firstCommentWinner.displayName || firstCommentWinner.id}`);
+    console.log(
+      `닉네임: ${firstCommentWinner.nickname || firstCommentWinner.displayName || firstCommentWinner.id}`,
+    );
     console.log(`이메일: ${maskEmail(firstCommentWinner.email)}`);
   }
 }

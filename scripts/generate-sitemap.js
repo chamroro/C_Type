@@ -7,12 +7,12 @@ async function generateSitemap() {
   try {
     const staticPages = [
       { url: '/', lastmod: new Date().toISOString().split('T')[0], priority: '1.0' },
-      { url: '/login', lastmod: new Date().toISOString().split('T')[0], priority: '0.8' }
+      { url: '/login', lastmod: new Date().toISOString().split('T')[0], priority: '0.8' },
     ];
 
     let sitemap = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n`;
 
-    staticPages.forEach(page => {
+    staticPages.forEach((page) => {
       sitemap += `  <url>
     <loc>${BASE_URL}${page.url}</loc>
     <lastmod>${page.lastmod}</lastmod>
@@ -38,7 +38,6 @@ async function generateSitemap() {
 
     fs.writeFileSync(`${PUBLIC_DIR}/sitemap.xml`, sitemap);
     console.log('✅ 사이트맵 생성 완료!');
-
   } catch (error) {
     console.error('사이트맵 생성 중 오류:', error);
   }

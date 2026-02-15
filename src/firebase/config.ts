@@ -26,10 +26,9 @@ export const db = firebase.firestore();
 export const auth = firebase.auth();
 
 // iframe을 숨기고 쿠키 기반 세션 지속성 설정
-auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL)
-  .catch((error) => {
-    console.error('인증 지속성 설정 오류:', error);
-  });
+auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL).catch((error) => {
+  console.error('인증 지속성 설정 오류:', error);
+});
 
 // iframe 화면에서 숨기기 설정
 // @ts-ignore
@@ -39,4 +38,4 @@ auth.settings.appVerificationDisabledForTesting = true;
 // 필요한 경우 Firestore 설정을 여기에 추가
 
 // 모듈 내보내기
-export default firebase; 
+export default firebase;

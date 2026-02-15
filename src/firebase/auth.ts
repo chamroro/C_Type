@@ -23,21 +23,21 @@ export const loginWithGoogle = async (): Promise<UserData> => {
     const provider = new firebase.auth.GoogleAuthProvider();
     const userCredential = await auth.signInWithPopup(provider);
     const user = userCredential.user;
-    
+
     if (!user) {
       throw new Error('구글 로그인에 실패했습니다');
     }
-    
+
     // 사용자 문서 참조
     const userDocRef = usersCollection.doc(user.uid);
     const userDoc = await userDocRef.get();
-    
+
     if (userDoc.exists) {
       // 기존 사용자: 마지막 로그인 시간 업데이트
       await userDocRef.update({
-        lastLoginAt: firebase.firestore.FieldValue.serverTimestamp()
+        lastLoginAt: firebase.firestore.FieldValue.serverTimestamp(),
       });
-      
+
       return userDoc.data() as UserData;
     } else {
       // 새 사용자: 문서 생성
@@ -50,7 +50,7 @@ export const loginWithGoogle = async (): Promise<UserData> => {
         createdAt: firebase.firestore.FieldValue.serverTimestamp(),
         lastLoginAt: firebase.firestore.FieldValue.serverTimestamp(),
       };
-      
+
       await userDocRef.set(userData);
       return userData;
     }
@@ -77,14 +77,14 @@ export const signOut = async (): Promise<void> => {
  */
 export const getCurrentUser = async (): Promise<UserData | null> => {
   const user = auth.currentUser;
-  
+
   if (!user) {
     return null;
   }
-  
+
   try {
     const userDoc = await usersCollection.doc(user.uid).get();
-    
+
     if (userDoc.exists) {
       return userDoc.data() as UserData;
     } else {
@@ -99,14 +99,12 @@ export const getCurrentUser = async (): Promise<UserData | null> => {
 /**
  * 인증 상태 변경 감지
  */
-export const onAuthChange = (
-  callback: (user: UserData | null) => void
-): (() => void) => {
+export const onAuthChange = (callback: (user: UserData | null) => void): (() => void) => {
   return auth.onAuthStateChanged(async (firebaseUser) => {
     if (firebaseUser) {
       try {
         const userDoc = await usersCollection.doc(firebaseUser.uid).get();
-        
+
         if (userDoc.exists) {
           callback(userDoc.data() as UserData);
         } else {
@@ -125,19 +123,22 @@ export const onAuthChange = (
 /**
  * 닉네임 중복 체크
  */
-export const checkNicknameExists = async (nickname: string, currentUserId?: string): Promise<boolean> => {
+export const checkNicknameExists = async (
+  nickname: string,
+  currentUserId?: string,
+): Promise<boolean> => {
   try {
     const snapshot = await usersCollection.where('nickname', '==', nickname).get();
-    
+
     if (snapshot.empty) {
       return false;
     }
-    
+
     // 현재 사용자의 닉네임인 경우는 중복으로 처리하지 않음
     if (currentUserId) {
-      return snapshot.docs.some(doc => doc.id !== currentUserId);
+      return snapshot.docs.some((doc) => doc.id !== currentUserId);
     }
-    
+
     return true;
   } catch (error) {
     console.error('닉네임 중복 체크 오류:', error);
@@ -148,20 +149,17 @@ export const checkNicknameExists = async (nickname: string, currentUserId?: stri
 /**
  * 닉네임 업데이트
  */
-export const updateUserNickname = async (
-  userId: string,
-  nickname: string
-): Promise<void> => {
+export const updateUserNickname = async (userId: string, nickname: string): Promise<void> => {
   try {
     // 닉네임 중복 체크
     const exists = await checkNicknameExists(nickname, userId);
     if (exists) {
       throw new Error('이미 사용 중인 닉네임입니다.');
     }
-    
+
     // 닉네임 업데이트
     await usersCollection.doc(userId).update({
-      nickname: nickname
+      nickname: nickname,
     });
   } catch (error) {
     console.error('닉네임 업데이트 오류:', error);
@@ -177,7 +175,7 @@ export const addCompletedPoemToUser = async (userId: string, poemId: string): Pr
     const userRef = usersCollection.doc(userId);
 
     await userRef.update({
-      completedPoems: firebase.firestore.FieldValue.arrayUnion(poemId)
+      completedPoems: firebase.firestore.FieldValue.arrayUnion(poemId),
     });
 
     console.log(`유저 ${userId}의 completedPoems에 ${poemId} 추가됨`);

@@ -47,7 +47,7 @@ const Input = styled.input`
   border: 1px solid #ddd;
   border-radius: 4px;
   font-size: 1rem;
-  
+
   &:focus {
     outline: none;
     border-color: #4a90e2;
@@ -70,7 +70,7 @@ const Button = styled.button`
   font-weight: 500;
   cursor: pointer;
   transition: all 0.2s;
-  
+
   &:disabled {
     opacity: 0.6;
     cursor: not-allowed;
@@ -80,7 +80,7 @@ const Button = styled.button`
 const CancelButton = styled(Button)`
   background-color: #f5f5f5;
   color: #666;
-  
+
   &:hover:not(:disabled) {
     background-color: #e9e9e9;
   }
@@ -89,7 +89,7 @@ const CancelButton = styled(Button)`
 const SaveButton = styled(Button)`
   background-color: #4a90e2;
   color: white;
-  
+
   &:hover:not(:disabled) {
     background-color: #3a7bc8;
   }
@@ -104,9 +104,11 @@ const LoadingSpinner = styled.div`
   border-top-color: white;
   animation: spin 1s ease-in-out infinite;
   margin-right: 8px;
-  
+
   @keyframes spin {
-    to { transform: rotate(360deg); }
+    to {
+      transform: rotate(360deg);
+    }
   }
 `;
 
@@ -118,24 +120,24 @@ interface NicknameModalProps {
   isNewUser: boolean;
 }
 
-const NicknameModal: React.FC<NicknameModalProps> = ({ 
-  isOpen, 
+const NicknameModal: React.FC<NicknameModalProps> = ({
+  isOpen,
   onClose,
   onSubmit,
   isLoading,
-  isNewUser
+  isNewUser,
 }) => {
   const [nickname, setNickname] = useState('');
-  
+
   if (!isOpen) return null;
-  
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (nickname.trim()) {
       await onSubmit(nickname.trim());
     }
   };
-  
+
   return (
     <ModalOverlay>
       <ModalContainer>
@@ -153,17 +155,10 @@ const NicknameModal: React.FC<NicknameModalProps> = ({
             disabled={isLoading}
           />
           <ButtonGroup>
-            <CancelButton 
-              type="button" 
-              onClick={onClose}
-              disabled={isLoading}
-            >
+            <CancelButton type="button" onClick={onClose} disabled={isLoading}>
               취소
             </CancelButton>
-            <SaveButton 
-              type="submit" 
-              disabled={!nickname.trim() || isLoading}
-            >
+            <SaveButton type="submit" disabled={!nickname.trim() || isLoading}>
               {isLoading ? (
                 <>
                   <LoadingSpinner />
@@ -180,4 +175,4 @@ const NicknameModal: React.FC<NicknameModalProps> = ({
   );
 };
 
-export default NicknameModal; 
+export default NicknameModal;

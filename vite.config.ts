@@ -4,18 +4,18 @@ import react from '@vitejs/plugin-react';
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
   const reactAppEnv = Object.fromEntries(
-    Object.entries(env).filter(([key]) => key.startsWith('REACT_APP_'))
+    Object.entries(env).filter(([key]) => key.startsWith('REACT_APP_')),
   );
 
   return {
     plugins: [react()],
     build: {
-      outDir: 'build'
+      outDir: 'build',
     },
     define: {
       'process.env': {
-        ...reactAppEnv
-      }
-    }
+        ...reactAppEnv,
+      },
+    },
   };
 });

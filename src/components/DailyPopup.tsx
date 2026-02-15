@@ -56,8 +56,8 @@ const Button = styled.button<{ primary?: boolean }>`
   border-radius: 5px;
   cursor: pointer;
   font-family: 'Pretendard-Regular';
-  background-color: ${props => props.primary ? 'rgb(73, 92, 75)' : '#f0f0f0'};
-  color: ${props => props.primary ? 'white' : '#333'};
+  background-color: ${(props) => (props.primary ? 'rgb(73, 92, 75)' : '#f0f0f0')};
+  color: ${(props) => (props.primary ? 'white' : '#333')};
   
   &:hover {
     opacity: 0.9;
@@ -98,18 +98,26 @@ const DailyPopup = () => {
       <PopupContent>
         <PopupTitle>시로 이벤트에 참여해주셔서 감사합니다. </PopupTitle>
         <PopupDescription>
-        지난 이벤트 결과가 발표되었습니다. <br/>
-        <a href="https://www.instagram.com/reel/DJOQuPJJZ-M/?igsh=MXc2eG9nc2t3cjIyMQ%3D%3D" target="_blank" rel="noopener noreferrer">instagram 링크 </a>
-        이곳에서 추첨 결과를 확인할 수 있습니다. <br />
-        감사합니다. 
+          지난 이벤트 결과가 발표되었습니다. <br />
+          <a
+            href="https://www.instagram.com/reel/DJOQuPJJZ-M/?igsh=MXc2eG9nc2t3cjIyMQ%3D%3D"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            instagram 링크{' '}
+          </a>
+          이곳에서 추첨 결과를 확인할 수 있습니다. <br />
+          감사합니다.
         </PopupDescription>
         <ButtonContainer>
           <Button onClick={handleDontShowToday}>오늘 하루 보지 않기</Button>
-          <Button primary onClick={handleClose}>확인</Button>
+          <Button primary onClick={handleClose}>
+            확인
+          </Button>
         </ButtonContainer>
       </PopupContent>
     </PopupOverlay>
   );
 };
 
-export default DailyPopup; 
+export default DailyPopup;

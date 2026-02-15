@@ -44,11 +44,9 @@ const Bubble = styled.div`
 const LoginBubble = () => {
   return (
     <BubbleContainer>
-      <Bubble>
-        로그인하면 감상평을 남길 수 있어요!
-      </Bubble>
+      <Bubble>로그인하면 감상평을 남길 수 있어요!</Bubble>
     </BubbleContainer>
   );
 };
 
-export default LoginBubble; 
+export default LoginBubble;

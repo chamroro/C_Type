@@ -1,10 +1,10 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { 
-  loginWithGoogle, 
-  signOut, 
+import {
+  loginWithGoogle,
+  signOut,
   onAuthChange,
   UserData,
-  updateUserNickname
+  updateUserNickname,
 } from '../firebase/auth';
 import NicknameModal from '../components/NicknameModal';
 
@@ -54,26 +54,30 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       clearError();
       setLoading(true);
-      
+
       // 로그인 타임아웃 설정 (10초)
       const loginPromise = loginWithGoogle();
       const timeoutPromise = new Promise((_, reject) => {
         setTimeout(() => reject(new Error('구글 로그인 시간 초과')), 10000);
       });
-      
+
       // 둘 중 먼저 완료되는 Promise 사용
-      const userData = await Promise.race([loginPromise, timeoutPromise]) as UserData;
-      
+      const userData = (await Promise.race([loginPromise, timeoutPromise])) as UserData;
+
       // 사용자가 처음 로그인했는지 확인 (생성 시간과 마지막 로그인 시간이 같으면 새 사용자로 간주)
-      const isFirstLogin = userData.createdAt && userData.lastLoginAt && 
+      const isFirstLogin =
+        userData.createdAt &&
+        userData.lastLoginAt &&
         userData.createdAt.seconds === userData.lastLoginAt.seconds;
-      
+
       setCurrentUser(userData);
-      
+
       // 새 사용자이거나 닉네임이 없는 경우에만 모달 표시
-      const shouldShowModal = (isFirstLogin || !userData.nickname) && (!userData.nickname || userData.nickname.trim() === '');
+      const shouldShowModal =
+        (isFirstLogin || !userData.nickname) &&
+        (!userData.nickname || userData.nickname.trim() === '');
       setIsNewUser(shouldShowModal);
-      
+
       if (shouldShowModal) {
         setTimeout(() => {
           setShowNicknameModal(true);
@@ -82,7 +86,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         window.location.href = '/';
       }
     } catch (error: any) {
-      console.error("구글 로그인 실패:", error);
+      console.error('구글 로그인 실패:', error);
       if (error.message === '구글 로그인 시간 초과') {
         setError('로그인 시간이 초과되었습니다. 네트워크 상태를 확인해주세요.');
       } else if (error.code === 'auth/network-request-failed') {
@@ -116,21 +120,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setError('닉네임을 입력해주세요.');
       return;
     }
-    
+
     try {
       if (!currentUser) {
         throw new Error('로그인 상태가 아닙니다');
       }
-      
+
       setNicknameLoading(true);
       await updateUserNickname(currentUser.uid, nickname);
-      
+
       // 현재 사용자 정보 업데이트
       setCurrentUser({
         ...currentUser,
-        nickname: nickname
+        nickname: nickname,
       });
-      
+
       setShowNicknameModal(false);
       window.location.href = '/';
     } catch (error: any) {
@@ -162,7 +166,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setShowNicknameModal,
     updateNickname,
     isNewUser,
-    nicknameLoading
+    nicknameLoading,
   };
 
   return (
@@ -181,4 +185,4 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   );
 };
 
-export default AuthContext; 
+export default AuthContext;
