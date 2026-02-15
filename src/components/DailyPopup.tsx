@@ -96,18 +96,12 @@ const DailyPopup = () => {
   return (
     <PopupOverlay>
       <PopupContent>
-        <PopupTitle>시 타이핑하고, 조그만 선물 받아가세요 :) 🎁</PopupTitle>
+        <PopupTitle>시로 이벤트에 참여해주셔서 감사합니다. </PopupTitle>
         <PopupDescription>
-        타자를 통해 시를 완성해보는 작은 공간, <br />
-        詩路(시로:시를 따라 걷는 길)에서는 <br />
-        마음을 담아 시를 적어주신 분들께 <b>조그마한 선물</b>을 준비했어요. <br />
-        <br />
-        총 20편의 시가 준비되어 있고, <br />
-        1️⃣ 각 시의 <b>첫 번째 타이퍼</b> 중 한 분을,  2️⃣ <b>모든 시를 완성한 타이퍼</b> 중 한 분을 <br />
-추첨하여 감사의 마음을 전하려 합니다. <br />
-<br />
-이벤트 기간: 4월 18일(목) ~ 5월 3일(토) <br />
-당첨자 발표: 5월 4일 (haeunkim.on 인스타그램 스토리 및 가입 이메일 개별 안내)
+        지난 이벤트 결과가 발표되었습니다. <br/>
+        <a href="https://www.instagram.com/reel/DJOQuPJJZ-M/?igsh=MXc2eG9nc2t3cjIyMQ%3D%3D" target="_blank" rel="noopener noreferrer">instagram 링크 </a>
+        이곳에서 추첨 결과를 확인할 수 있습니다. <br />
+        감사합니다. 
         </PopupDescription>
         <ButtonContainer>
           <Button onClick={handleDontShowToday}>오늘 하루 보지 않기</Button>
