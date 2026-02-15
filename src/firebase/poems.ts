@@ -1,14 +1,31 @@
-import { collection, doc, getDoc, getDocs, updateDoc, arrayUnion } from 'firebase/firestore';
+import {
+  arrayUnion,
+  collection,
+  doc,
+  getDoc,
+  getDocs,
+  Timestamp,
+  updateDoc,
+} from 'firebase/firestore';
 import { db } from './config';
 
 // 시 인터페이스
+interface CompletedUser {
+  id: string;
+  comment?: string;
+  createdAt?: { seconds: number; nanoseconds: number } | null;
+}
+
 export interface Poem {
   id: string;
   title: string;
   content: string;
   author: string;
-  completedUsers?: string[]; // 이 시를 완료한 사용자 ID 배열 (순서대로)
+  completedUsers?: Array<string | CompletedUser>;
 }
+
+const getCompletedUserId = (entry: string | CompletedUser): string =>
+  typeof entry === 'string' ? entry : entry.id;
 
 /**
  * 모든 시 가져오기
@@ -73,7 +90,7 @@ export const saveCompletedPoem = async (
     // 시 문서의 completedUsers 배열에 사용자 ID 추가
     const poemRef = doc(db, 'poems', poemId);
     await updateDoc(poemRef, {
-      completedUsers: arrayUnion({ id: uid, comment: comment || '' }),
+      completedUsers: arrayUnion({ id: uid, comment: comment || '', createdAt: Timestamp.now() }),
     });
 
     // 사용자 통계 업데이트 (필요하다면)
@@ -93,7 +110,11 @@ export const getUserCompletedPoems = async (userId: string): Promise<Poem[]> => 
     const allPoems = await getAllPoems();
 
     // 사용자가 완료한 시만 필터링
-    return allPoems.filter((poem) => poem.completedUsers && poem.completedUsers.includes(userId));
+    return allPoems.filter(
+      (poem) =>
+        poem.completedUsers &&
+        poem.completedUsers.some((completedUser) => getCompletedUserId(completedUser) === userId),
+    );
   } catch (error) {
     console.error('완료한 시 목록 가져오기 오류:', error);
     throw error;
@@ -109,7 +130,11 @@ export const getUncompletedPoems = async (userId: string): Promise<Poem[]> => {
     const allPoems = await getAllPoems();
 
     // 완료하지 않은 시만 필터링
-    return allPoems.filter((poem) => !poem.completedUsers || !poem.completedUsers.includes(userId));
+    return allPoems.filter(
+      (poem) =>
+        !poem.completedUsers ||
+        !poem.completedUsers.some((completedUser) => getCompletedUserId(completedUser) === userId),
+    );
   } catch (error) {
     console.error('완료하지 않은 시 목록 가져오기 오류:', error);
     throw error;
@@ -132,7 +157,7 @@ export const getUsersWhoCompletedPoem = async (
       const completedUsers = poemData.completedUsers || [];
 
       // 제한된 수의 사용자 ID 반환
-      return completedUsers.slice(0, limitCount);
+      return completedUsers.slice(0, limitCount).map(getCompletedUserId);
     }
 
     return [];
@@ -152,7 +177,7 @@ export const getCompletedUserIds = async (poemId: string): Promise<string[]> => 
 
     if (poemDoc.exists()) {
       const poemData = poemDoc.data();
-      return poemData.completedUsers || [];
+      return (poemData.completedUsers || []).map(getCompletedUserId);
     }
 
     return [];

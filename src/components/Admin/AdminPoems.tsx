@@ -3,14 +3,12 @@ import styled from 'styled-components';
 import { useAuth } from '../../contexts/AuthContext';
 import {
   collection,
-  addDoc,
   getDocs,
   updateDoc,
   deleteDoc,
   doc,
   query,
   orderBy,
-  where,
   setDoc,
 } from 'firebase/firestore';
 import { db } from '../../firebase/config';
@@ -19,12 +17,20 @@ import CountUp from 'react-countup';
 // 관리자 아이디 설정
 const ADMIN_ID = process.env.REACT_APP_ADMIN_ID || '';
 // 시 인터페이스
+interface CompletedUserObject {
+  id: string;
+  comment?: string;
+  createdAt?: { seconds: number; nanoseconds: number } | null;
+}
+
+type CompletedUserEntry = string | CompletedUserObject;
+
 interface Poem {
   id?: string;
   title: string;
   content: string;
   author: string;
-  completedUsers?: string[];
+  completedUsers?: CompletedUserEntry[];
 }
 
 // 통계 인터페이스 추가
@@ -39,7 +45,26 @@ interface UserData {
   uid: string;
   nickname?: string;
   displayName?: string;
+  email?: string;
   completedPoems?: string[];
+}
+
+interface CompletedAllUserInfo {
+  uid: string;
+  nickname: string;
+  email: string;
+  completedPoemsCount: number;
+}
+
+interface CommentRow {
+  id: string;
+  poemId: string;
+  poemTitle: string;
+  uid: string;
+  nickname: string;
+  comment: string;
+  createdAtMs: number | null;
+  fallbackOrder: number;
 }
 
 // 스타일 컴포넌트
@@ -212,12 +237,54 @@ const StatLabel = styled.div`
   letter-spacing: -0.05em;
 `;
 
+const SectionTitle = styled.h2`
+  margin-top: 2rem;
+  margin-bottom: 0.5rem;
+  font-size: 1.1rem;
+  color: #333;
+`;
+
+const SectionDescription = styled.p`
+  margin: 0 0 0.5rem;
+  color: #666;
+  font-size: 0.85rem;
+`;
+
+const PaginationBar = styled.div`
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+`;
+
+const PaginationButton = styled(Button)`
+  font-size: 0.75rem;
+`;
+
+const PaginationInfo = styled.span`
+  color: #666;
+  font-size: 0.8rem;
+`;
+
+const getTimestampMs = (value?: { seconds: number; nanoseconds: number } | null): number | null => {
+  if (!value || typeof value.seconds !== 'number') return null;
+  return value.seconds * 1000 + Math.floor((value.nanoseconds || 0) / 1000000);
+};
+
+const getCommentDedupKey = (poemId: string, uid: string, comment: string) =>
+  `${poemId}::${uid}::${comment}`;
+
 const AdminPoems: React.FC = () => {
+  const COMMENTS_PER_PAGE = 10;
   const { currentUser } = useAuth();
   const [poems, setPoems] = useState<Poem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [completedAllUsers, setCompletedAllUsers] = useState<CompletedAllUserInfo[]>([]);
+  const [commentRows, setCommentRows] = useState<CommentRow[]>([]);
+  const [commentPage, setCommentPage] = useState(1);
   const [statistics, setStatistics] = useState<Statistics>({
     totalCompletions: 0,
     totalUsers: 0,
@@ -253,9 +320,13 @@ const AdminPoems: React.FC = () => {
       setError(null);
 
       // 1. 시와 사용자 데이터를 병렬로 가져오기
-      const [poemSnapshot, userSnapshot] = await Promise.all([
+      const [poemSnapshot, userSnapshot, commentSnapshot] = await Promise.all([
         getDocs(query(collection(db, 'poems'), orderBy('title'))),
         getDocs(collection(db, 'users')),
+        getDocs(query(collection(db, 'comments'), orderBy('createdAt', 'desc'))).catch((err) => {
+          console.warn('comments 조회 실패, legacy 댓글만 사용합니다:', err);
+          return null;
+        }),
       ]);
 
       // 2. 시 데이터 처리
@@ -270,6 +341,7 @@ const AdminPoems: React.FC = () => {
       let totalCompletions = 0;
       let maxCompletions = 0;
       let completedAllPoemsCount = 0;
+      let fallbackOrder = 0;
 
       // 시별 통계
       poemsList.forEach((poem) => {
@@ -278,16 +350,108 @@ const AdminPoems: React.FC = () => {
         maxCompletions = Math.max(maxCompletions, completionsCount);
       });
 
-      // 사용자별 통계 및 닉네임 캐시
-      const newNicknames: { [key: string]: string } = {};
+      // 사용자 캐시 및 완주 유저 데이터
+      const userMap: { [key: string]: UserData } = {};
+      const completedAllUsersList: CompletedAllUserInfo[] = [];
       userSnapshot.docs.forEach((userDoc) => {
-        const userData = userDoc.data() as UserData;
-        newNicknames[userDoc.id] = userData.nickname || userData.displayName || '사용자';
+        const userData = { ...(userDoc.data() as UserData), uid: userDoc.id };
+        userMap[userDoc.id] = userData;
 
         const completedPoemsCount = userData.completedPoems?.length || 0;
-        if (completedPoemsCount === totalPoemsCount) {
+        if (totalPoemsCount > 0 && completedPoemsCount === totalPoemsCount) {
           completedAllPoemsCount++;
+          completedAllUsersList.push({
+            uid: userDoc.id,
+            nickname: userData.nickname || userData.displayName || '사용자',
+            email: userData.email || '-',
+            completedPoemsCount,
+          });
         }
+      });
+
+      completedAllUsersList.sort((a, b) => a.nickname.localeCompare(b.nickname, 'ko'));
+
+      // 댓글 전체(시 구분 없이) 최신순 데이터
+      const poemTitleMap = poemsList.reduce(
+        (acc, poem) => {
+          if (poem.id) acc[poem.id] = poem.title;
+          return acc;
+        },
+        {} as Record<string, string>,
+      );
+
+      const timedCommentRows: CommentRow[] = (commentSnapshot?.docs || []).map((commentDoc, index) => {
+        const data = commentDoc.data() as {
+          uid?: string;
+          poemId?: string;
+          comment?: string;
+          createdAt?: { seconds: number; nanoseconds: number } | null;
+        };
+        const poemId = data.poemId || '-';
+        const uid = data.uid || '-';
+        const comment = (data.comment || '').trim();
+
+        return {
+          id: commentDoc.id,
+          poemId,
+          poemTitle: poemTitleMap[poemId] || '-',
+          uid,
+          nickname: userMap[uid]?.nickname || userMap[uid]?.displayName || uid || '사용자',
+          comment,
+          createdAtMs: getTimestampMs(data.createdAt),
+          fallbackOrder: index + 1,
+        };
+      });
+
+      // 신규 comments 컬렉션에 이미 있는 항목은 legacy fallback에서 중복 제거
+      const timedKeyCountMap: Record<string, number> = {};
+      timedCommentRows.forEach((row) => {
+        const key = getCommentDedupKey(row.poemId, row.uid, row.comment);
+        timedKeyCountMap[key] = (timedKeyCountMap[key] || 0) + 1;
+      });
+
+      const legacyCommentRows: CommentRow[] = [];
+      poemsList.forEach((poem) => {
+        (poem.completedUsers || []).forEach((entry) => {
+          const normalizedEntry =
+            typeof entry === 'string' ? { id: entry, comment: '', createdAt: null } : entry;
+          const comment = (normalizedEntry.comment || '').trim();
+          if (!comment) return;
+
+          const dedupKey = getCommentDedupKey(poem.id || '-', normalizedEntry.id, comment);
+          if ((timedKeyCountMap[dedupKey] || 0) > 0) {
+            timedKeyCountMap[dedupKey] -= 1;
+            return;
+          }
+
+          fallbackOrder += 1;
+          legacyCommentRows.push({
+            id: `${poem.id}-${normalizedEntry.id}-${fallbackOrder}`,
+            poemId: poem.id || '-',
+            poemTitle: poem.title || '-',
+            uid: normalizedEntry.id,
+            nickname:
+              userMap[normalizedEntry.id]?.nickname ||
+              userMap[normalizedEntry.id]?.displayName ||
+              normalizedEntry.id ||
+              '사용자',
+            comment,
+            createdAtMs: getTimestampMs(normalizedEntry.createdAt),
+            fallbackOrder,
+          });
+        });
+      });
+
+      const allCommentRows = [...timedCommentRows, ...legacyCommentRows];
+      allCommentRows.sort((a, b) => {
+        const aMs = a.createdAtMs ?? -1;
+        const bMs = b.createdAtMs ?? -1;
+        if (aMs !== bMs) return bMs - aMs;
+        const byNickname = a.nickname.localeCompare(b.nickname, 'ko');
+        if (byNickname !== 0) return byNickname;
+        const byComment = a.comment.localeCompare(b.comment, 'ko');
+        if (byComment !== 0) return byComment;
+        return b.fallbackOrder - a.fallbackOrder;
       });
 
       // 4. 상태 업데이트
@@ -297,12 +461,25 @@ const AdminPoems: React.FC = () => {
         completedAllPoemsCount,
         maxCompletionsForPoem: maxCompletions,
       });
+      setCompletedAllUsers(completedAllUsersList);
+      setCommentRows(allCommentRows);
+      setCommentPage(1);
     } catch (error) {
       console.error('데이터 가져오기 오류:', error);
       setError('데이터를 불러오는 중 오류가 발생했습니다.');
     } finally {
       setLoading(false);
     }
+  };
+
+  const totalCommentPages = Math.max(1, Math.ceil(commentRows.length / COMMENTS_PER_PAGE));
+  const currentCommentRows = commentRows.slice(
+    (commentPage - 1) * COMMENTS_PER_PAGE,
+    commentPage * COMMENTS_PER_PAGE,
+  );
+  const formatCommentDate = (ms: number | null) => {
+    if (ms === null) return '시간 미기록';
+    return new Date(ms).toLocaleString('ko-KR');
   };
 
   // 초기 데이터 로딩
@@ -520,6 +697,87 @@ const AdminPoems: React.FC = () => {
             </Button>
           </div>
         </Form>
+      )}
+
+      <SectionTitle>Users Who Completed All Poems</SectionTitle>
+      <SectionDescription>전체 시를 모두 완료한 유저의 정보입니다.</SectionDescription>
+      <Table>
+        <thead>
+          <tr>
+            <Th>닉네임</Th>
+            <Th>이메일</Th>
+            <Th>완료한 시 수</Th>
+            <Th>UID</Th>
+          </tr>
+        </thead>
+        <tbody>
+          {completedAllUsers.length === 0 ? (
+            <tr>
+              <Td colSpan={4}>전체 시를 완료한 사용자가 없습니다.</Td>
+            </tr>
+          ) : (
+            completedAllUsers.map((user) => (
+              <tr key={user.uid}>
+                <Td>{user.nickname}</Td>
+                <Td>{user.email}</Td>
+                <Td>{user.completedPoemsCount}</Td>
+                <Td>{user.uid}</Td>
+              </tr>
+            ))
+          )}
+        </tbody>
+      </Table>
+
+      <SectionTitle>Latest Comments (All Poems)</SectionTitle>
+      <SectionDescription>
+        시 구분 없이 달린 댓글을 최신순으로 확인할 수 있습니다.
+      </SectionDescription>
+      <Table>
+        <thead>
+          <tr>
+            <Th>작성 시각</Th>
+            <Th>닉네임</Th>
+            <Th>시 제목</Th>
+            <Th>댓글</Th>
+          </tr>
+        </thead>
+        <tbody>
+          {commentRows.length === 0 ? (
+            <tr>
+              <Td colSpan={4}>등록된 댓글이 없습니다.</Td>
+            </tr>
+          ) : (
+            currentCommentRows.map((comment) => (
+              <tr key={comment.id}>
+                <Td>{formatCommentDate(comment.createdAtMs)}</Td>
+                <Td>{comment.nickname}</Td>
+                <Td>{comment.poemTitle}</Td>
+                <Td>{comment.comment}</Td>
+              </tr>
+            ))
+          )}
+        </tbody>
+      </Table>
+      {commentRows.length > 0 && (
+        <PaginationBar>
+          <PaginationButton
+            type="button"
+            onClick={() => setCommentPage((prev) => Math.max(1, prev - 1))}
+            disabled={commentPage === 1}
+          >
+            PREV
+          </PaginationButton>
+          <PaginationInfo>
+            {commentPage} / {totalCommentPages}
+          </PaginationInfo>
+          <PaginationButton
+            type="button"
+            onClick={() => setCommentPage((prev) => Math.min(totalCommentPages, prev + 1))}
+            disabled={commentPage === totalCommentPages}
+          >
+            NEXT
+          </PaginationButton>
+        </PaginationBar>
       )}
 
       {loading ? (

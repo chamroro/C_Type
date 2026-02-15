@@ -4,7 +4,16 @@ import { db } from '../firebase/config';
 import { addCompletedPoemToUser } from '../firebase/auth';
 import { saveCompletedPoem } from '../firebase/poems';
 import { useAuth } from '../contexts/AuthContext';
-import { collection, getDocs, query, where, getDoc, doc } from 'firebase/firestore';
+import {
+  addDoc,
+  collection,
+  doc,
+  getDoc,
+  getDocs,
+  query,
+  serverTimestamp,
+  where,
+} from 'firebase/firestore';
 
 // 시 인터페이스 정의 (poems.ts의 인터페이스와 일치하도록)
 interface Poem {
@@ -1225,6 +1234,12 @@ const PoetryTyping: React.FC = () => {
       // 댓글과 함께 완료 정보 저장
       await saveCompletedPoem(currentUser.uid, currentPoem.id, comment);
       await addCompletedPoemToUser(currentUser.uid, currentPoem.id);
+      await addDoc(collection(db, 'comments'), {
+        uid: currentUser.uid,
+        poemId: currentPoem.id,
+        comment,
+        createdAt: serverTimestamp(),
+      });
 
       const updatedCompletedUsers = [
         ...(currentPoem.completedUsers || []),
