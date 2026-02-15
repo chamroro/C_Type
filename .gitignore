@@ -1,5 +1,5 @@
 # 의존성 디렉토리
-node_modules/
+/node_modules/
 /.pnp
 .pnp.js
 
@@ -54,6 +54,3 @@ logs
 # misc
 .DS_Store
 Thumbs.db 
-
-# 데이터 파일
-src/data/poems.ts
