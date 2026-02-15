@@ -1,9 +1,8 @@
 import React, { useState, useRef, useEffect, createRef, RefObject } from 'react';
 import styled, { css } from 'styled-components';
-import { Helmet } from 'react-helmet';
 import { db } from '../firebase/config';
 import { addCompletedPoemToUser } from '../firebase/auth';
-import { saveCompletedPoem} from '../firebase/poems';
+import { saveCompletedPoem } from '../firebase/poems';
 import { useAuth } from '../contexts/AuthContext';
 import { collection, getDocs, query, where, getDoc, doc } from 'firebase/firestore';
 
@@ -84,7 +83,7 @@ const TypingArea = styled.div`
   overflow-y: auto;
   scroll-behavior: smooth;
   background: #fff;
-  
+
   &::-webkit-scrollbar {
     width: 8px;
   }
@@ -106,6 +105,7 @@ const TypingArea = styled.div`
 
 const LineContainer = styled.div`
   position: relative;
+  isolation: isolate;
   margin-bottom: 0.5rem;
   min-height: fit-content;
   font-size: 1.2rem;
@@ -119,16 +119,16 @@ const LineContainer = styled.div`
 const fontFamilyMap: { [key: string]: string } = {
   'Pretendard-Bold': "'Pretendard-Bold', sans-serif",
   'BookkMyungjo-Bd': "'BookkMyungjo-Bd', serif",
-  'MaruBuri': "'MaruBuri', serif",
-  'IntelOneMono': "'IntelOneMono', monospace",
+  MaruBuri: "'MaruBuri', serif",
+  IntelOneMono: "'IntelOneMono', monospace",
   'Shilla_CultureB-Bold': "'Shilla_CultureB-Bold', serif",
   'YESMyoungjo-Regular': "'YESMyoungjo-Regular', serif",
-  'MapoFlowerIsland': "'MapoFlowerIsland', serif"
+  MapoFlowerIsland: "'MapoFlowerIsland', serif",
 };
 
 // BaseLine, InputLine, OverlayLine, WaitingText 스타일 컴포넌트 수정
 const BaseLine = styled.div<{ fontFamily: string }>`
-  font-family: ${props => fontFamilyMap[props.fontFamily] || props.fontFamily};
+  font-family: ${(props) => fontFamilyMap[props.fontFamily] || props.fontFamily};
   visibility: hidden;
   font-size: 1.2rem;
   white-space: pre-wrap;
@@ -144,14 +144,15 @@ const InputLine = styled.textarea<{ fontFamily: string }>`
   width: 100%;
   padding: 0.5rem;
   font-size: 1.2rem;
-  font-weight: 600;
+  font-weight: 400;
   border: none;
   background-color: transparent;
   outline: none;
+  margin: 0;
   position: absolute;
   top: 0;
   left: 0;
-  font-family: ${props => fontFamilyMap[props.fontFamily] || props.fontFamily};
+  font-family: ${(props) => fontFamilyMap[props.fontFamily] || props.fontFamily};
   caret-color: rgb(0, 0, 0);
   color: transparent;
   line-height: 1.5;
@@ -161,6 +162,7 @@ const InputLine = styled.textarea<{ fontFamily: string }>`
   white-space: pre-wrap;
   word-break: break-all;
   box-sizing: border-box;
+  z-index: 4;
 `;
 
 const OverlayLine = styled.div<{ fontFamily: string }>`
@@ -170,12 +172,14 @@ const OverlayLine = styled.div<{ fontFamily: string }>`
   width: 100%;
   height: 100%;
   padding: 0.5rem;
+  margin: 0;
   pointer-events: none;
-  font-family: ${props => fontFamilyMap[props.fontFamily] || props.fontFamily};
+  font-family: ${(props) => fontFamilyMap[props.fontFamily] || props.fontFamily};
   white-space: pre-wrap;
   word-break: break-all;
   line-height: 1.5;
   box-sizing: border-box;
+  z-index: 2;
 `;
 
 const WaitingText = styled.div<{ fontFamily: string }>`
@@ -185,29 +189,43 @@ const WaitingText = styled.div<{ fontFamily: string }>`
   width: 100%;
   height: 100%;
   padding: 0.5rem;
+  margin: 0;
   pointer-events: none;
-  font-family: ${props => fontFamilyMap[props.fontFamily] || props.fontFamily};
+  font-family: ${(props) => fontFamilyMap[props.fontFamily] || props.fontFamily};
   white-space: pre-wrap;
   word-break: break-all;
   line-height: 1.5;
   color: #ccc;
   box-sizing: border-box;
+  z-index: 1;
 `;
 
 // 글자 스타일
-const Char = styled.span<{ status: 'correct' | 'incorrect' | 'waiting' | 'composing' | 'composing-match' }>`
-  ${props => {
+const Char = styled.span<{
+  status: 'correct' | 'incorrect' | 'waiting' | 'composing' | 'composing-match';
+}>`
+  ${(props) => {
     switch (props.status) {
       case 'correct':
-        return css`color: rgb(63, 63, 63);`;
+        return css`
+          color: rgb(63, 63, 63);
+        `;
       case 'incorrect':
-        return css`color: #ff3333;`;
+        return css`
+          color: #ff3333;
+        `;
       case 'waiting':
-        return css`color: #ccc;`;
+        return css`
+          color: #ccc;
+        `;
       case 'composing':
-        return css`color: #4a90e2;`;
+        return css`
+          color: #4a90e2;
+        `;
       case 'composing-match':
-        return css`color: #33a852;`; // 조합 중이지만 초성이 일치할 때
+        return css`
+          color: #33a852;
+        `; // 조합 중이지만 초성이 일치할 때
     }
   }}
 `;
@@ -222,7 +240,7 @@ const ProgressToast = styled.div`
   border-radius: 30px;
   box-shadow: 0 4px 6px rgba(115, 115, 115, 0.1);
   color: white;
- 
+
   display: flex;
   align-items: center;
   z-index: 10;
@@ -238,7 +256,7 @@ const ProgressBarContainer = styled.div`
 `;
 
 const ProgressBar = styled.div<{ width: number }>`
-  width: ${props => `${props.width}%`};
+  width: ${(props) => `${props.width}%`};
   height: 100%;
   background-color: rgb(73, 92, 75);
   transition: width 0.4s ease;
@@ -253,7 +271,7 @@ const fontOptions = [
   { id: 'IntelOneMono', name: 'Intel One Mono' },
   { id: 'Shilla_CultureB-Bold', name: '신라문화체' },
   { id: 'YESMyoungjo-Regular', name: '예스 명조' },
-  { id: 'MapoFlowerIsland', name: '마포꽃섬' }
+  { id: 'MapoFlowerIsland', name: '마포꽃섬' },
 ];
 
 const FontSelectorContainer = styled.div`
@@ -264,16 +282,15 @@ const FontSelectorContainer = styled.div`
   flex-wrap: wrap;
 `;
 
-const FontChip = styled.button<{ isSelected: boolean, fontFamily: string }>`
+const FontChip = styled.button<{ isSelected: boolean; fontFamily: string }>`
   background: none;
   border: none;
-  color: ${props => (props.isSelected ? '#000' : '#999')};
+  color: ${(props) => (props.isSelected ? '#000' : '#999')};
   cursor: pointer;
   font-size: 0.8rem;
   transition: color 0.2s ease;
   padding: 0;
-  font-family: ${props => fontFamilyMap[props.fontFamily] || props.fontFamily};
-  
+  font-family: ${(props) => fontFamilyMap[props.fontFamily] || props.fontFamily};
 
   &:hover {
     color: #000;
@@ -290,78 +307,171 @@ const CompletedUsersText = styled.p`
 // 새로고침 아이콘
 const RefreshIcon = () => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <path d="M17.65 6.35C16.2 4.9 14.21 4 12 4C7.58 4 4.01 7.58 4.01 12C4.01 16.42 7.58 20 12 20C15.73 20 18.84 17.45 19.73 14H17.65C16.83 16.33 14.61 18 12 18C8.69 18 6 15.31 6 12C6 8.69 8.69 6 12 6C13.66 6 15.14 6.69 16.22 7.78L13 11H20V4L17.65 6.35Z" fill="#333" />
+    <path
+      d="M17.65 6.35C16.2 4.9 14.21 4 12 4C7.58 4 4.01 7.58 4.01 12C4.01 16.42 7.58 20 12 20C15.73 20 18.84 17.45 19.73 14H17.65C16.83 16.33 14.61 18 12 18C8.69 18 6 15.31 6 12C6 8.69 8.69 6 12 6C13.66 6 15.14 6.69 16.22 7.78L13 11H20V4L17.65 6.35Z"
+      fill="#333"
+    />
   </svg>
 );
 
 // 한글 자모 체크 유틸리티 함수
 const isKorean = (char: string): boolean => {
   const code = char.charCodeAt(0);
-  return (code >= 0xAC00 && code <= 0xD7A3) // 완성형 한글 (가-힣)
-    || (code >= 0x3131 && code <= 0x318E); // 자음, 모음 (ㄱ-ㅎ, ㅏ-ㅣ)
+  return (
+    (code >= 0xac00 && code <= 0xd7a3) || // 완성형 한글 (가-힣)
+    (code >= 0x3131 && code <= 0x318e)
+  ); // 자음, 모음 (ㄱ-ㅎ, ㅏ-ㅣ)
 };
 
 // 한글 초성 확인 함수
 const isKoreanInitial = (char: string): boolean => {
   const initialCode = char.charCodeAt(0);
   // 한글 자음 범위 (ㄱ-ㅎ)
-  return initialCode >= 0x3131 && initialCode <= 0x314E;
+  return initialCode >= 0x3131 && initialCode <= 0x314e;
 };
 
 // 한글 모음 확인 함수
 const isKoreanVowel = (char: string): boolean => {
   const code = char.charCodeAt(0);
   // 한글 모음 범위 (ㅏ-ㅣ)
-  return code >= 0x314F && code <= 0x318E;
+  return code >= 0x314f && code <= 0x318e;
 };
 
 // 한글 초성 가져오기
 const getKoreanInitial = (char: string): string => {
   const code = char.charCodeAt(0);
-  
+
   // 완성형 한글인 경우 (가-힣)
-  if (code >= 0xAC00 && code <= 0xD7A3) {
+  if (code >= 0xac00 && code <= 0xd7a3) {
     // 초성 추출 공식: Math.floor((UNI - 0xAC00) / 28 / 21) + 0x1100
-    const initialCode = Math.floor((code - 0xAC00) / 28 / 21) + 0x1100;
-    
+    const initialCode = Math.floor((code - 0xac00) / 28 / 21) + 0x1100;
+
     // ㄱ, ㄲ, ㄴ, ㄷ, ... 등으로 변환하기 위한 매핑
     const initialMap: { [key: number]: string } = {
-      0x1100: 'ㄱ', 0x1101: 'ㄲ', 0x1102: 'ㄴ', 0x1103: 'ㄷ', 0x1104: 'ㄸ',
-      0x1105: 'ㄹ', 0x1106: 'ㅁ', 0x1107: 'ㅂ', 0x1108: 'ㅃ', 0x1109: 'ㅅ',
-      0x110A: 'ㅆ', 0x110B: 'ㅇ', 0x110C: 'ㅈ', 0x110D: 'ㅉ', 0x110E: 'ㅊ',
-      0x110F: 'ㅋ', 0x1110: 'ㅌ', 0x1111: 'ㅍ', 0x1112: 'ㅎ'
+      0x1100: 'ㄱ',
+      0x1101: 'ㄲ',
+      0x1102: 'ㄴ',
+      0x1103: 'ㄷ',
+      0x1104: 'ㄸ',
+      0x1105: 'ㄹ',
+      0x1106: 'ㅁ',
+      0x1107: 'ㅂ',
+      0x1108: 'ㅃ',
+      0x1109: 'ㅅ',
+      0x110a: 'ㅆ',
+      0x110b: 'ㅇ',
+      0x110c: 'ㅈ',
+      0x110d: 'ㅉ',
+      0x110e: 'ㅊ',
+      0x110f: 'ㅋ',
+      0x1110: 'ㅌ',
+      0x1111: 'ㅍ',
+      0x1112: 'ㅎ',
     };
-    
+
     return initialMap[initialCode] || '';
   }
-  
+
   return '';
 };
 
 // 한글 초성, 중성, 종성 추출 함수 추가
-const decomposeHangul = (char: string): { initial: string, medial: string, final: string } | null => {
+const decomposeHangul = (
+  char: string,
+): { initial: string; medial: string; final: string } | null => {
   const code = char.charCodeAt(0);
-  
+
   // 완성형 한글이 아닌 경우
-  if (code < 0xAC00 || code > 0xD7A3) {
+  if (code < 0xac00 || code > 0xd7a3) {
     return null;
   }
-  
-  const initialCode = Math.floor((code - 0xAC00) / 28 / 21);
-  const medialCode = Math.floor(((code - 0xAC00) / 28) % 21);
-  const finalCode = (code - 0xAC00) % 28;
-  
+
+  const initialCode = Math.floor((code - 0xac00) / 28 / 21);
+  const medialCode = Math.floor(((code - 0xac00) / 28) % 21);
+  const finalCode = (code - 0xac00) % 28;
+
   // 초성 배열 (19개)
-  const initials = ['ㄱ', 'ㄲ', 'ㄴ', 'ㄷ', 'ㄸ', 'ㄹ', 'ㅁ', 'ㅂ', 'ㅃ', 'ㅅ', 'ㅆ', 'ㅇ', 'ㅈ', 'ㅉ', 'ㅊ', 'ㅋ', 'ㅌ', 'ㅍ', 'ㅎ'];
+  const initials = [
+    'ㄱ',
+    'ㄲ',
+    'ㄴ',
+    'ㄷ',
+    'ㄸ',
+    'ㄹ',
+    'ㅁ',
+    'ㅂ',
+    'ㅃ',
+    'ㅅ',
+    'ㅆ',
+    'ㅇ',
+    'ㅈ',
+    'ㅉ',
+    'ㅊ',
+    'ㅋ',
+    'ㅌ',
+    'ㅍ',
+    'ㅎ',
+  ];
   // 중성 배열 (21개)
-  const medials = ['ㅏ', 'ㅐ', 'ㅑ', 'ㅒ', 'ㅓ', 'ㅔ', 'ㅕ', 'ㅖ', 'ㅗ', 'ㅘ', 'ㅙ', 'ㅚ', 'ㅛ', 'ㅜ', 'ㅝ', 'ㅞ', 'ㅟ', 'ㅠ', 'ㅡ', 'ㅢ', 'ㅣ'];
+  const medials = [
+    'ㅏ',
+    'ㅐ',
+    'ㅑ',
+    'ㅒ',
+    'ㅓ',
+    'ㅔ',
+    'ㅕ',
+    'ㅖ',
+    'ㅗ',
+    'ㅘ',
+    'ㅙ',
+    'ㅚ',
+    'ㅛ',
+    'ㅜ',
+    'ㅝ',
+    'ㅞ',
+    'ㅟ',
+    'ㅠ',
+    'ㅡ',
+    'ㅢ',
+    'ㅣ',
+  ];
   // 종성 배열 (28개, 첫 번째는 받침 없음)
-  const finals = ['', 'ㄱ', 'ㄲ', 'ㄳ', 'ㄴ', 'ㄵ', 'ㄶ', 'ㄷ', 'ㄹ', 'ㄺ', 'ㄻ', 'ㄼ', 'ㄽ', 'ㄾ', 'ㄿ', 'ㅀ', 'ㅁ', 'ㅂ', 'ㅄ', 'ㅅ', 'ㅆ', 'ㅇ', 'ㅈ', 'ㅊ', 'ㅋ', 'ㅌ', 'ㅍ', 'ㅎ'];
-  
+  const finals = [
+    '',
+    'ㄱ',
+    'ㄲ',
+    'ㄳ',
+    'ㄴ',
+    'ㄵ',
+    'ㄶ',
+    'ㄷ',
+    'ㄹ',
+    'ㄺ',
+    'ㄻ',
+    'ㄼ',
+    'ㄽ',
+    'ㄾ',
+    'ㄿ',
+    'ㅀ',
+    'ㅁ',
+    'ㅂ',
+    'ㅄ',
+    'ㅅ',
+    'ㅆ',
+    'ㅇ',
+    'ㅈ',
+    'ㅊ',
+    'ㅋ',
+    'ㅌ',
+    'ㅍ',
+    'ㅎ',
+  ];
+
   return {
     initial: initials[initialCode],
     medial: medials[medialCode],
-    final: finals[finalCode]
+    final: finals[finalCode],
   };
 };
 
@@ -369,9 +479,9 @@ const decomposeHangul = (char: string): { initial: string, medial: string, final
 const hasSameInitialAndMedial = (char1: string, char2: string): boolean => {
   const comp1 = decomposeHangul(char1);
   const comp2 = decomposeHangul(char2);
-  
+
   if (!comp1 || !comp2) return false;
-  
+
   return comp1.initial === comp2.initial && comp1.medial === comp2.medial;
 };
 
@@ -379,42 +489,42 @@ const hasSameInitialAndMedial = (char1: string, char2: string): boolean => {
 const isPartialVowel = (current: string, target: string): boolean => {
   // 완성형 한글이 아닌 경우 처리 불가
   if (!current || !target) return false;
-  
+
   const currentChar = current.charAt(current.length - 1);
   const targetChar = target.charAt(0);
-  
+
   // 초성 + 모음 상태인 경우 (예: "우"는 "워"의 일부)
   const currentDecomp = decomposeHangul(currentChar);
   const targetDecomp = decomposeHangul(targetChar);
-  
+
   if (!currentDecomp || !targetDecomp) return false;
-  
+
   // 복합 모음 관계 확인 (쌍모음 관계 체크)
   // 'ㅜ'는 'ㅝ'의 일부, 'ㅗ'는 'ㅘ'의 일부 등
   const complexVowelMap: { [key: string]: string[] } = {
-    'ㅜ': ['ㅝ', 'ㅞ', 'ㅟ'],
-    'ㅗ': ['ㅘ', 'ㅙ', 'ㅚ'],
-    'ㅡ': ['ㅢ']
+    ㅜ: ['ㅝ', 'ㅞ', 'ㅟ'],
+    ㅗ: ['ㅘ', 'ㅙ', 'ㅚ'],
+    ㅡ: ['ㅢ'],
   };
-  
+
   // 초성이 같고, 현재 모음이 복합 모음의 일부인 경우
   if (currentDecomp.initial === targetDecomp.initial) {
     const possibleComplexVowels = complexVowelMap[currentDecomp.medial] || [];
     return possibleComplexVowels.includes(targetDecomp.medial);
   }
-  
+
   return false;
 };
 
 // 입력 중인 글자가 목표 글자로 변할 가능성이 있는지 확인
 const isPartOfNextChar = (current: string, target: string): boolean => {
   if (!current || !target) return false;
-  
+
   // 1. 초성만 입력된 경우 (ㄱ, ㄴ, ㄷ 등)
   if (isKoreanInitial(current) && getKoreanInitial(target) === current) {
     return true;
   }
-  
+
   // 2. 현재 글자가 목표 글자의 부분인 경우 (복합 모음 고려)
   return isPartialVowel(current, target);
 };
@@ -465,15 +575,14 @@ const ToggleButton = styled.button<{ isOpen: boolean }>`
   border: none;
   color: #888;
   cursor: pointer;
-  transform: rotate(${props => (props.isOpen ? '90deg' : '0deg')});
+  transform: rotate(${(props) => (props.isOpen ? '90deg' : '0deg')});
   transition: transform 0.2s ease;
-
 `;
 
 // 토스트 메시지 스타일
 const ToastMessage = styled.div<{ show: boolean }>`
   position: fixed;
-  top: ${props => (props.show ? '20px' : '10px')};
+  top: ${(props) => (props.show ? '20px' : '10px')};
   left: 50%;
   transform: translateX(-50%);
   background-color: #000;
@@ -543,10 +652,10 @@ const CommentBubble = styled.span`
     display: inline-flex;
     align-items: center;
     justify-content: center;
-  
+
     height: 0.7rem;
     padding-top: 0.05rem;
-    background-color:rgb(255, 255, 255);
+    background-color: rgb(255, 255, 255);
     color: rgb(73, 92, 75);
     font-size: 0.5rem;
     font-weight: 600;
@@ -576,18 +685,21 @@ const CommentBubble = styled.span`
 
 // 유저별 감상평 정보를 계산하는 함수
 const getUserCompletionInfo = (completedUsers: Array<{ id: string; comment: string }>) => {
-  return completedUsers.reduce((acc, { id, comment }) => {
-    if (!acc[id]) {
-      acc[id] = {
-        count: 1,
-        latestComment: comment
-      };
-    } else {
-      acc[id].count++;
-      acc[id].latestComment = comment;
-    }
-    return acc;
-  }, {} as { [key: string]: { count: number; latestComment: string } });
+  return completedUsers.reduce(
+    (acc, { id, comment }) => {
+      if (!acc[id]) {
+        acc[id] = {
+          count: 1,
+          latestComment: comment,
+        };
+      } else {
+        acc[id].count++;
+        acc[id].latestComment = comment;
+      }
+      return acc;
+    },
+    {} as { [key: string]: { count: number; latestComment: string } },
+  );
 };
 
 const PoetryTyping: React.FC = () => {
@@ -603,16 +715,21 @@ const PoetryTyping: React.FC = () => {
   const [composingLine, setComposingLine] = useState<number | null>(null);
   const lineRefs = useRef<Array<RefObject<HTMLTextAreaElement>>>([]);
   const { currentUser } = useAuth();
-  const [completedUserNames, setCompletedUserNames] = useState<{ [key: string]: string }>({});
+  const [completedUserNames, setCompletedUserNames] = useState<{
+    [key: string]: string;
+  }>({});
   const [showAllCompletedToast, setShowAllCompletedToast] = useState(false);
   const [isUsersOpen, setIsUsersOpen] = useState(false);
   const [comment, setComment] = useState('');
   const [isCompleted, setIsCompleted] = useState(false);
-  const POEM_COUNT = 20; 
+  const POEM_COUNT = 20;
   const [isSticky, setIsSticky] = useState(false);
   const progressWrapperRef = useRef<HTMLDivElement>(null);
   const rightColumnRef = useRef<HTMLDivElement>(null);
-  const [toastPosition, setToastPosition] = useState({ left: '0', width: '100%' });
+  const [toastPosition, setToastPosition] = useState({
+    left: '0',
+    width: '100%',
+  });
   const typingAreaRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -637,17 +754,17 @@ const PoetryTyping: React.FC = () => {
 
         if (urlPoemId) {
           console.log('URL에서 가져온 시 ID:', urlPoemId);
-          
+
           // Firestore에서 직접 해당 ID의 시를 가져옴
           const poemDoc = await getDoc(doc(db, 'poems', urlPoemId));
-          
+
           if (poemDoc.exists()) {
             const poemData = poemDoc.data();
             const selectedPoem = {
               id: poemDoc.id,
-              ...poemData
+              ...poemData,
             } as Poem;
-            
+
             console.log('파이어스토어에서 가져온 시:', selectedPoem);
             setCurrentPoem(selectedPoem);
             setLineInputs(Array(selectedPoem.content.split('\n').length).fill(''));
@@ -662,11 +779,11 @@ const PoetryTyping: React.FC = () => {
           // URL에 ID가 없는 경우 전체 시 목록을 가져옴
           const poemsQuery = query(collection(db, 'poems'));
           const poemSnapshot = await getDocs(poemsQuery);
-          const poemsList = poemSnapshot.docs.map(doc => ({
+          const poemsList = poemSnapshot.docs.map((doc) => ({
             id: doc.id,
-            ...doc.data()
+            ...doc.data(),
           })) as Poem[];
-          
+
           setPoems(poemsList);
           const randomId = getRandomPoemId();
           const poemDoc = await getDoc(doc(db, 'poems', randomId));
@@ -688,7 +805,7 @@ const PoetryTyping: React.FC = () => {
         console.error('시 가져오기 오류:', error);
       }
     };
-    
+
     fetchPoems();
   }, []);
 
@@ -712,27 +829,32 @@ const PoetryTyping: React.FC = () => {
     if (!currentPoem || showCompletion || isCompleted) return;
 
     // 빈 줄을 제외한 실제 시 내용이 있는 줄만 비교
-    const meaningfulLines = poemLines.map((line, i) => ({
-      index: i,
-      line: line.replace(/\s+/g, ' ').trim(),
-      input: (lineInputs[i] || '').replace(/\s+/g, ' ').trim()
-    })).filter(({ line }) => line !== '');
+    const meaningfulLines = poemLines
+      .map((line, i) => ({
+        index: i,
+        line: line.replace(/\s+/g, ' ').trim(),
+        input: (lineInputs[i] || '').replace(/\s+/g, ' ').trim(),
+      }))
+      .filter(({ line }) => line !== '');
 
-    console.log('의미있는 줄 검사:', meaningfulLines.map(l => ({
-      index: l.index,
-      line: l.line,
-      input: l.input,
-      isMatch: l.line === l.input
-    })));
+    console.log(
+      '의미있는 줄 검사:',
+      meaningfulLines.map((l) => ({
+        index: l.index,
+        line: l.line,
+        input: l.input,
+        isMatch: l.line === l.input,
+      })),
+    );
 
     // 모든 줄이 정확히 일치하는지 확인
     const allCorrect = meaningfulLines.every(({ line, input }) => line === input);
-    
+
     console.log('완성 체크:', {
       totalLines: poemLines.length,
       meaningfulLines: meaningfulLines.length,
       allCorrect,
-      lineInputs
+      lineInputs,
     });
 
     if (allCorrect && meaningfulLines.length > 0) {
@@ -762,7 +884,7 @@ const PoetryTyping: React.FC = () => {
 
         window.scrollTo({
           top: scrollAmount,
-          behavior: 'smooth'
+          behavior: 'smooth',
         });
       }
     });
@@ -773,10 +895,10 @@ const PoetryTyping: React.FC = () => {
     const newLineInputs = [...lineInputs];
     newLineInputs[index] = value;
     setLineInputs(newLineInputs);
-    
+
     updateProgressSimple(newLineInputs);
     checkAndScroll(index);
-    
+
     if (index === poemLines.length - 1) {
       const isComplete = checkCompletion(newLineInputs, poemLines);
       if (isComplete && !showCompletion) {
@@ -798,41 +920,40 @@ const PoetryTyping: React.FC = () => {
         return;
       }
     }
-    
+
     if (e.key === 'Enter' && !isComposing) {
       e.preventDefault();
-      
+
       if (index < poemLines.length - 1) {
         let nextContentIndex = index + 1;
-        
+
         while (
-          nextContentIndex < poemLines.length - 1 && 
+          nextContentIndex < poemLines.length - 1 &&
           poemLines[nextContentIndex].trim() === ''
         ) {
           nextContentIndex++;
         }
-        
+
         setActiveLineIndex(nextContentIndex);
         setTimeout(() => {
           lineRefs.current[nextContentIndex]?.current?.focus();
           checkAndScroll(nextContentIndex);
         }, 0);
-      } 
-      else if (!showCompletion) {
+      } else if (!showCompletion) {
         handleCompletion();
       }
     }
-    
+
     if (e.key === 'Backspace' && !isComposing) {
       const currentInput = lineInputs[index] || '';
-      
+
       if (currentInput === '') {
         e.preventDefault();
-        
+
         // 이전 줄이 있는지 확인
         if (index > 0) {
           let prevIndex = index - 1;
-          
+
           // 이전 줄이 빈 줄이면 그 이전 줄로 이동
           while (prevIndex > 0 && poemLines[prevIndex].trim() === '') {
             prevIndex--;
@@ -843,15 +964,15 @@ const PoetryTyping: React.FC = () => {
           if (prevInput === '' && prevIndex > 0) {
             prevIndex--;
           }
-          
+
           setActiveLineIndex(prevIndex);
-          
+
           setTimeout(() => {
             const prevLineRef = lineRefs.current[prevIndex]?.current;
             if (prevLineRef) {
               prevLineRef.focus();
               checkAndScroll(prevIndex);
-              
+
               const inputLength = lineInputs[prevIndex]?.length || 0;
               if (inputLength > 0) {
                 prevLineRef.setSelectionRange(inputLength, inputLength);
@@ -880,9 +1001,9 @@ const PoetryTyping: React.FC = () => {
 
   const getRandomPoemId = () => {
     const randomNumber = Math.floor(Math.random() * POEM_COUNT) + 1; // 1 ~ POEM_COUNT
-    return String(randomNumber); 
+    return String(randomNumber);
   };
-  
+
   const loadRandomPoem = async () => {
     const pathParts = window.location.pathname.split('/');
     if (pathParts[1] === 'poem' && pathParts[2]) {
@@ -910,17 +1031,20 @@ const PoetryTyping: React.FC = () => {
       console.error('랜덤 시 불러오기 실패:', error);
     }
   };
-  
+
   const renderLine = (line: string, index: number) => {
     const input = lineInputs[index] || '';
     const isActive = index === activeLineIndex;
     const isComposing = index === composingLine;
 
     return (
-      <LineContainer key={index} onClick={() => {
-        setActiveLineIndex(index);
-        lineRefs.current[index]?.current?.focus();
-      }}>
+      <LineContainer
+        key={index}
+        onClick={() => {
+          setActiveLineIndex(index);
+          lineRefs.current[index]?.current?.focus();
+        }}
+      >
         <BaseLine fontFamily={selectedFont}>{line}</BaseLine>
         <InputLine
           ref={lineRefs.current[index]}
@@ -933,49 +1057,81 @@ const PoetryTyping: React.FC = () => {
           autoFocus={isActive && index === 0}
           spellCheck={false}
           autoComplete="off"
+          autoCorrect="off"
+          autoCapitalize="none"
+          data-gramm="false"
           data-line-index={index}
           fontFamily={selectedFont}
         />
-        
-        <WaitingText fontFamily={selectedFont}>
-          {line}
-        </WaitingText>
-        
+
+        <WaitingText fontFamily={selectedFont}>{line}</WaitingText>
+
         <OverlayLine fontFamily={selectedFont}>
-          {line.substring(0, input.length).split('').map((char, i) => {
-            const currentChar = input[i];
-            const targetChar = line[i];
-            const nextChar = line[i + 1];
-              
-            if (isComposing && i === input.length - 1) {
-              if (isKoreanInitial(currentChar)) {
-                const targetInitial = getKoreanInitial(targetChar);
-                return <Char key={i} status={currentChar === targetInitial ? 'correct' : 'incorrect'}>{currentChar}</Char>;
-              }
-                
-              const currentCode = currentChar.charCodeAt(0);
-              const targetCode = targetChar.charCodeAt(0);
-                
-              if (currentCode >= 0xAC00 && currentCode <= 0xD7A3 &&
-                  targetCode >= 0xAC00 && targetCode <= 0xD7A3) {
-                if (hasSameInitialAndMedial(currentChar, targetChar)) {
-                  return <Char key={i} status="correct">{currentChar}</Char>;
+          {line
+            .substring(0, input.length)
+            .split('')
+            .map((char, i) => {
+              const currentChar = input[i];
+              const targetChar = line[i];
+              const nextChar = line[i + 1];
+
+              if (isComposing && i === input.length - 1) {
+                if (isKoreanInitial(currentChar)) {
+                  const targetInitial = getKoreanInitial(targetChar);
+                  return (
+                    <Char key={i} status={currentChar === targetInitial ? 'correct' : 'incorrect'}>
+                      {currentChar}
+                    </Char>
+                  );
                 }
+
+                const currentCode = currentChar.charCodeAt(0);
+                const targetCode = targetChar.charCodeAt(0);
+
+                if (
+                  currentCode >= 0xac00 &&
+                  currentCode <= 0xd7a3 &&
+                  targetCode >= 0xac00 &&
+                  targetCode <= 0xd7a3
+                ) {
+                  if (hasSameInitialAndMedial(currentChar, targetChar)) {
+                    return (
+                      <Char key={i} status="correct">
+                        {currentChar}
+                      </Char>
+                    );
+                  }
+                }
+
+                if (isPartOfNextChar(currentChar, targetChar)) {
+                  return (
+                    <Char key={i} status="correct">
+                      {currentChar}
+                    </Char>
+                  );
+                }
+
+                if (nextChar && isPartOfNextChar(currentChar, nextChar)) {
+                  return (
+                    <Char key={i} status="correct">
+                      {currentChar}
+                    </Char>
+                  );
+                }
+
+                return (
+                  <Char key={i} status="incorrect">
+                    {currentChar}
+                  </Char>
+                );
               }
-              
-              if (isPartOfNextChar(currentChar, targetChar)) {
-                return <Char key={i} status="correct">{currentChar}</Char>;
-              }
-              
-              if (nextChar && isPartOfNextChar(currentChar, nextChar)) {
-                return <Char key={i} status="correct">{currentChar}</Char>;
-              }
-                
-              return <Char key={i} status="incorrect">{currentChar}</Char>;
-            }
-              
-            return <Char key={i} status={currentChar === targetChar ? 'correct' : 'incorrect'}>{currentChar}</Char>;
-          })}
+
+              return (
+                <Char key={i} status={currentChar === targetChar ? 'correct' : 'incorrect'}>
+                  {currentChar}
+                </Char>
+              );
+            })}
         </OverlayLine>
       </LineContainer>
     );
@@ -983,21 +1139,21 @@ const PoetryTyping: React.FC = () => {
 
   const handleCompletion = async () => {
     if (showCompletion || isCompleted) return;
-    
+
     console.log('완료 처리 중...');
     setShowCompletion(true);
     setIsCompleted(true);
     setProgress(100);
-    
+
     if (!currentPoem || !currentUser) return;
-    
+
     try {
       // 현재 시의 completedUsers를 즉시 업데이트
-      setCurrentPoem(prev => {
+      setCurrentPoem((prev) => {
         if (!prev) return null;
         return {
           ...prev,
-          completedUsers: prev.completedUsers || []
+          completedUsers: prev.completedUsers || [],
         };
       });
 
@@ -1006,10 +1162,11 @@ const PoetryTyping: React.FC = () => {
         const userDoc = await getDoc(doc(db, 'users', currentUser.uid));
         if (userDoc.exists()) {
           const userData = userDoc.data();
-          const nickname = userData.nickname || userData.displayName || currentUser.uid.substring(0, 8);
-          setCompletedUserNames(prev => ({
+          const nickname =
+            userData.nickname || userData.displayName || currentUser.uid.substring(0, 8);
+          setCompletedUserNames((prev) => ({
             ...prev,
-            [currentUser.uid]: nickname
+            [currentUser.uid]: nickname,
           }));
         }
       }
@@ -1022,14 +1179,14 @@ const PoetryTyping: React.FC = () => {
 
   const fetchUserNicknames = async (userIds: string[]) => {
     if (!userIds.length) return;
-    
+
     try {
       const nicknames: { [key: string]: string } = {};
-      
+
       await Promise.all(
         userIds.map(async (userId) => {
           if (nicknames[userId]) return;
-          
+
           const userDoc = await getDoc(doc(db, 'users', userId));
           if (userDoc.exists()) {
             const userData = userDoc.data();
@@ -1037,9 +1194,9 @@ const PoetryTyping: React.FC = () => {
           } else {
             nicknames[userId] = userId.substring(0, 8);
           }
-        })
+        }),
       );
-      
+
       setCompletedUserNames(nicknames);
     } catch (error) {
       console.error('사용자 닉네임 가져오기 오류:', error);
@@ -1048,14 +1205,13 @@ const PoetryTyping: React.FC = () => {
 
   useEffect(() => {
     if (currentPoem?.completedUsers && currentPoem.completedUsers.length > 0) {
-      const userIds = currentPoem.completedUsers.map(user => user.id);
+      const userIds = currentPoem.completedUsers.map((user) => user.id);
       fetchUserNicknames(userIds);
     }
   }, [currentPoem]);
-  
 
   const toggleUsers = () => {
-    setIsUsersOpen(prev => !prev);
+    setIsUsersOpen((prev) => !prev);
   };
 
   const handleCommentChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
@@ -1072,14 +1228,14 @@ const PoetryTyping: React.FC = () => {
 
       const updatedCompletedUsers = [
         ...(currentPoem.completedUsers || []),
-        { id: currentUser.uid, comment }
+        { id: currentUser.uid, comment },
       ];
 
-      setCurrentPoem(prev => {
+      setCurrentPoem((prev) => {
         if (!prev) return null;
         return {
           ...prev,
-          completedUsers: updatedCompletedUsers
+          completedUsers: updatedCompletedUsers,
         };
       });
 
@@ -1102,14 +1258,14 @@ const PoetryTyping: React.FC = () => {
 
       const updatedCompletedUsers = [
         ...(currentPoem.completedUsers || []),
-        { id: currentUser.uid, comment: '' }
+        { id: currentUser.uid, comment: '' },
       ];
 
-      setCurrentPoem(prev => {
+      setCurrentPoem((prev) => {
         if (!prev) return null;
         return {
           ...prev,
-          completedUsers: updatedCompletedUsers
+          completedUsers: updatedCompletedUsers,
         };
       });
 
@@ -1128,10 +1284,12 @@ const PoetryTyping: React.FC = () => {
 
   // 완성 체크 함수
   const checkCompletion = (inputs: string[], lines: string[]): boolean => {
-    const meaningfulPairs = lines.map((line, i) => ({
-      line: line.replace(/\s+/g, ' ').trim(),
-      input: (inputs[i] || '').replace(/\s+/g, ' ').trim()
-    })).filter(({ line }) => line !== '');
+    const meaningfulPairs = lines
+      .map((line, i) => ({
+        line: line.replace(/\s+/g, ' ').trim(),
+        input: (inputs[i] || '').replace(/\s+/g, ' ').trim(),
+      }))
+      .filter(({ line }) => line !== '');
 
     return meaningfulPairs.length > 0 && meaningfulPairs.every(({ line, input }) => line === input);
   };
@@ -1139,18 +1297,18 @@ const PoetryTyping: React.FC = () => {
   // 진행률 업데이트 함수
   const updateProgressSimple = (inputs: string[] = lineInputs) => {
     if (!currentPoem) return;
-    
+
     const totalLines = poemLines.length;
     if (totalLines === 0) return;
-    
+
     let totalProgress = 0;
-    
+
     poemLines.forEach((line, idx) => {
       const input = inputs[idx] || '';
       const lineProgress = Math.min(input.length / Math.max(line.length, 1), 1);
       totalProgress += lineProgress;
     });
-    
+
     const avgProgress = (totalProgress / totalLines) * 100;
     setProgress(Math.min(avgProgress, 100));
   };
@@ -1158,9 +1316,7 @@ const PoetryTyping: React.FC = () => {
   return (
     <Container>
       {showAllCompletedToast && (
-        <ToastMessage show={true}>
-          모든 시를 타이핑 했어요! 🙊
-        </ToastMessage>
+        <ToastMessage show={true}>모든 시를 타이핑 했어요! 🙊</ToastMessage>
       )}
 
       {showCompletion && (
@@ -1169,14 +1325,16 @@ const PoetryTyping: React.FC = () => {
           {currentUser ? (
             <>
               <span>한줄평을 남길 수 있어요!</span>
-              <CommentTextarea 
-                value={comment} 
-                onChange={handleCommentChange} 
+              <CommentTextarea
+                value={comment}
+                onChange={handleCommentChange}
                 placeholder="한줄평을 입력하세요...(15자 이내)"
                 maxLength={15}
               />
               <ButtonContainer>
-                <Button onClick={handleOkayClick} disabled={comment.trim() !== ''}>괜찮아요</Button>
+                <Button onClick={handleOkayClick} disabled={comment.trim() !== ''}>
+                  괜찮아요
+                </Button>
                 <Button onClick={handleCommentSubmit}>등록</Button>
               </ButtonContainer>
             </>
@@ -1194,35 +1352,35 @@ const PoetryTyping: React.FC = () => {
           </>
         )}
       </Header>
-    
+
       <ContentArea>
         <LeftColumn>
           <RefreshButton onClick={loadRandomPoem}>
-              <RefreshIcon />
-              새로운 시
-            </RefreshButton>  
-            <FontSelectorContainer>
-              {fontOptions.map((font, index) => (
-                <React.Fragment key={font.id}>
-                  <FontChip 
-                    isSelected={selectedFont === font.id}
-                    onClick={() => handleFontChange(font.id)}
-                    className={font.id}
-                    type="button"
-                    fontFamily={font.id}
-                  >
-                    {font.name}
-                  </FontChip>
-                  {index < fontOptions.length - 1 && <span style={{ margin: '0' , color: '#888', fontSize: '0.8rem'}}>/</span>}
-                </React.Fragment>
-              ))}
-            </FontSelectorContainer>
+            <RefreshIcon />
+            새로운 시
+          </RefreshButton>
+          <FontSelectorContainer>
+            {fontOptions.map((font, index) => (
+              <React.Fragment key={font.id}>
+                <FontChip
+                  isSelected={selectedFont === font.id}
+                  onClick={() => handleFontChange(font.id)}
+                  className={font.id}
+                  type="button"
+                  fontFamily={font.id}
+                >
+                  {font.name}
+                </FontChip>
+                {index < fontOptions.length - 1 && (
+                  <span style={{ margin: '0', color: '#888', fontSize: '0.8rem' }}>/</span>
+                )}
+              </React.Fragment>
+            ))}
+          </FontSelectorContainer>
 
           <CompletedUsersContainer>
             <CompletedUsersTitle onClick={toggleUsers}>
-              <ToggleButton isOpen={isUsersOpen}>▶</ToggleButton>
-              이 시를 적은 사람
-              
+              <ToggleButton isOpen={isUsersOpen}>▶</ToggleButton>이 시를 적은 사람
             </CompletedUsersTitle>
             {isUsersOpen && (
               <CompletedUsersText>
@@ -1230,14 +1388,19 @@ const PoetryTyping: React.FC = () => {
                   <span>'{currentPoem?.title}'의 첫번째 타이퍼가 되어주세요 ✍🏻</span>
                 ) : (
                   (() => {
-                    const userCompletions = getUserCompletionInfo(currentPoem?.completedUsers || []);
-                    return Object.entries(userCompletions).map(([userId, { count, latestComment }]) => (
-                      <CommentBubble key={userId}>
-                        {completedUserNames[userId]}
-                        {count > 1 && <span className="count-badge">{count}</span>} {latestComment && <span>💭</span>}&nbsp;
-                        {latestComment && <span className="comment">{latestComment}</span>}
-                      </CommentBubble>
-                    ));
+                    const userCompletions = getUserCompletionInfo(
+                      currentPoem?.completedUsers || [],
+                    );
+                    return Object.entries(userCompletions).map(
+                      ([userId, { count, latestComment }]) => (
+                        <CommentBubble key={userId}>
+                          {completedUserNames[userId]}
+                          {count > 1 && <span className="count-badge">{count}</span>}{' '}
+                          {latestComment && <span>💭</span>}&nbsp;
+                          {latestComment && <span className="comment">{latestComment}</span>}
+                        </CommentBubble>
+                      ),
+                    );
                   })()
                 )}
               </CompletedUsersText>
@@ -1255,12 +1418,10 @@ const PoetryTyping: React.FC = () => {
           <TypingArea ref={typingAreaRef}>
             {poemLines.map((line, index) => renderLine(line, index))}
           </TypingArea>
-
         </RightColumn>
       </ContentArea>
-
     </Container>
   );
 };
 
-export default PoetryTyping; 
+export default PoetryTyping;
