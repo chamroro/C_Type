@@ -55,3 +55,6 @@ logs
 # misc
 .DS_Store
 Thumbs.db 
+
+# 서비스계정
+typethepoem-firebase-adminsdk-fbsvc-2c2e51f8f7.json
